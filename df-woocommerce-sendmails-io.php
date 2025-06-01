@@ -2,7 +2,7 @@
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
 Description: Integrates WooCommerce products with sendmails.io mailing lists. Adds a settings page for API key management.
-Version: 0.01
+Version: 0.02
 Author: radialmonster
 */
 
@@ -10,7 +10,9 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-// Add admin menu
+/**
+ * Add admin menu and submenus
+ */
 add_action('admin_menu', 'df_wc_sendmailsio_add_admin_menu');
 function df_wc_sendmailsio_add_admin_menu() {
     add_menu_page(
@@ -22,17 +24,257 @@ function df_wc_sendmailsio_add_admin_menu() {
         'dashicons-email-alt2',
         56
     );
+    add_submenu_page(
+        'df-wc-sendmailsio',
+        'Product List Mapping',
+        'Product List Mapping',
+        'read', // all logged-in users
+        'df-wc-sendmailsio-product-mapping',
+        'df_wc_sendmailsio_product_mapping_page'
+    );
 }
 
-// Settings page with tabs (only Settings for now)
+/**
+ * Settings page with tabs (only Settings for now)
+ */
 function df_wc_sendmailsio_settings_page() {
     ?>
     <div class="wrap">
         <h1>DF - Woocommerce Sendmails.io</h1>
         <h2 class="nav-tab-wrapper">
             <a href="#" class="nav-tab nav-tab-active">Settings</a>
+            <a href="<?php echo admin_url('admin.php?page=df-wc-sendmailsio-product-mapping'); ?>" class="nav-tab">Product List Mapping</a>
         </h2>
         <?php df_wc_sendmailsio_settings_form(); ?>
+    </div>
+    <?php
+}
+
+/**
+ * Fetch all sendmails.io lists using API key/endpoint from settings
+ * @return array|WP_Error
+ */
+function df_wc_sendmailsio_get_all_lists() {
+    $api_key = get_option('df_wc_sendmailsio_api_key', '');
+    $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
+    if (!$api_key) {
+        return new WP_Error('no_api_key', 'No sendmails.io API key set.');
+    }
+    $url = trailingslashit($api_endpoint) . 'lists';
+    $args = array(
+        'headers' => array('Accept' => 'application/json'),
+        'timeout' => 15,
+    );
+    $url = add_query_arg('api_token', $api_key, $url);
+    $response = wp_remote_get($url, $args);
+    if (is_wp_error($response)) {
+        return $response;
+    }
+    $code = wp_remote_retrieve_response_code($response);
+    $body = wp_remote_retrieve_body($response);
+    if ($code !== 200) {
+        return new WP_Error('api_error', 'API error: ' . $body);
+    }
+    $data = json_decode($body, true);
+    if (!is_array($data)) {
+        return new WP_Error('api_error', 'Invalid API response.');
+    }
+    return $data;
+}
+
+/**
+ * Product List Mapping Page
+ */
+function df_wc_sendmailsio_product_mapping_page() {
+    // Handle mapping save
+    if (!empty($_POST['df_wc_sendmailsio_save_mapping']) && !empty($_POST['product_id'])) {
+        $product_id = intval($_POST['product_id']);
+        if (isset($_POST['df_wc_sendmailsio_nonce_' . $product_id]) && wp_verify_nonce($_POST['df_wc_sendmailsio_nonce_' . $product_id], 'df_wc_sendmailsio_save_mapping_' . $product_id)) {
+            $list_uid = sanitize_text_field($_POST['sendmailsio_list_uid']);
+            if ($list_uid) {
+                update_post_meta($product_id, '_sendmailsio_list_uid', $list_uid);
+                echo '<div class="notice notice-success"><p>List mapping saved for product.</p></div>';
+            } else {
+                delete_post_meta($product_id, '_sendmailsio_list_uid');
+                echo '<div class="notice notice-warning"><p>List mapping removed for product.</p></div>';
+            }
+        } else {
+            echo '<div class="notice notice-error"><p>Security check failed. Please try again.</p></div>';
+        }
+    }
+
+    // Handle create new list and assign
+    if (!empty($_POST['df_wc_sendmailsio_create_list']) && !empty($_POST['product_id'])) {
+        $product_id = intval($_POST['product_id']);
+        if (isset($_POST['df_wc_sendmailsio_create_list_nonce_' . $product_id]) && wp_verify_nonce($_POST['df_wc_sendmailsio_create_list_nonce_' . $product_id], 'df_wc_sendmailsio_create_list_' . $product_id)) {
+            // Collect and sanitize fields
+            $fields = array(
+                'name' => sanitize_text_field($_POST['new_list_name']),
+                'from_email' => sanitize_email($_POST['from_email']),
+                'from_name' => sanitize_text_field($_POST['from_name']),
+                'contact[company]' => sanitize_text_field($_POST['company']),
+                'contact[email]' => sanitize_email($_POST['contact_email']),
+                'contact[country_id]' => sanitize_text_field($_POST['country_id']),
+                'contact[city]' => sanitize_text_field($_POST['city']),
+                'contact[state]' => sanitize_text_field($_POST['state']),
+                'contact[address_1]' => sanitize_text_field($_POST['address_1']),
+                'contact[address_2]' => sanitize_text_field($_POST['address_2']),
+                'contact[zip]' => sanitize_text_field($_POST['zip']),
+                'contact[phone]' => sanitize_text_field($_POST['phone']),
+                'contact[url]' => esc_url_raw($_POST['url']),
+                'subscribe_confirmation' => 1,
+                'send_welcome_email' => 1,
+                'unsubscribe_notification' => 1,
+            );
+            $api_key = get_option('df_wc_sendmailsio_api_key', '');
+            $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
+            if ($api_key) {
+                $url = trailingslashit($api_endpoint) . 'lists';
+                $url = add_query_arg('api_token', $api_key, $url);
+                $args = array(
+                    'headers' => array('Accept' => 'application/json'),
+                    'body' => $fields,
+                    'timeout' => 20,
+                );
+                $response = wp_remote_post($url, $args);
+                if (is_wp_error($response)) {
+                    echo '<div class="notice notice-error"><p>API error: ' . esc_html($response->get_error_message()) . '</p></div>';
+                } else {
+                    $code = wp_remote_retrieve_response_code($response);
+                    $body = wp_remote_retrieve_body($response);
+                    $data = json_decode($body, true);
+                    $new_uid = null;
+                    if ($code === 200) {
+                        if (isset($data['uid'])) {
+                            $new_uid = $data['uid'];
+                        } elseif (isset($data['data']['uid'])) {
+                            $new_uid = $data['data']['uid'];
+                        }
+                    }
+                    if ($new_uid) {
+                        update_post_meta($product_id, '_sendmailsio_list_uid', $new_uid);
+                        echo '<div class="notice notice-success"><p>New list created and assigned to product.</p></div>';
+                    } else {
+                        $msg = isset($data['message']) ? $data['message'] : $body;
+                        echo '<div class="notice notice-error"><p>Failed to create list: ' . esc_html($msg) . '</p></div>';
+                    }
+                }
+            } else {
+                echo '<div class="notice notice-error"><p>No API key set.</p></div>';
+            }
+        } else {
+            echo '<div class="notice notice-error"><p>Security check failed. Please try again.</p></div>';
+        }
+    }
+    ?>
+    <div class="wrap">
+        <h1>WooCommerce Product to Sendmails.io List Mapping</h1>
+        <p>Associate each WooCommerce product with a sendmails.io list. If a list does not exist, you can create one inline.</p>
+        <?php
+        $lists = df_wc_sendmailsio_get_all_lists();
+        if (is_wp_error($lists)) {
+            echo '<div class="notice notice-error"><p>' . esc_html($lists->get_error_message()) . '</p></div>';
+        }
+        ?>
+        <table class="widefat fixed striped">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Current List</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                // Fetch all WooCommerce products (excluding variations)
+                if (class_exists('WC_Product')) {
+                    $args = array(
+                        'post_type'      => 'product',
+                        'post_status'    => 'publish',
+                        'posts_per_page' => 50,
+                        'fields'         => 'ids',
+                        'meta_query'     => array(
+                            array(
+                                'key'     => '_visibility',
+                                'value'   => array('hidden', 'search', 'exclude-from-catalog'),
+                                'compare' => 'NOT IN'
+                            )
+                        ),
+                    );
+                    $products = get_posts($args);
+                    foreach ($products as $product_id) {
+                        // Exclude variations
+                        if (get_post_type($product_id) === 'product_variation') continue;
+                        $product = wc_get_product($product_id);
+                        if (!$product) continue;
+                        $list_uid = get_post_meta($product_id, '_sendmailsio_list_uid', true);
+                        ?>
+                        <tr>
+                            <td>
+                                <a href="<?php echo get_edit_post_link($product_id); ?>" target="_blank">
+                                    <?php echo esc_html($product->get_name()); ?>
+                                </a>
+                            </td>
+                            <td>
+                                <?php echo $list_uid ? esc_html($list_uid) : '<em>Not set</em>'; ?>
+                            </td>
+                            <td>
+                                <?php if (!is_wp_error($lists) && is_array($lists)): ?>
+                                    <form method="post" style="display:inline;">
+                                        <?php wp_nonce_field('df_wc_sendmailsio_save_mapping_' . $product_id, 'df_wc_sendmailsio_nonce_' . $product_id); ?>
+                                        <select name="sendmailsio_list_uid">
+                                            <option value="">-- Select List --</option>
+                                            <?php
+                                            foreach ($lists as $list) {
+                                                $uid = isset($list['uid']) ? $list['uid'] : (isset($list['id']) ? $list['id'] : '');
+                                                $name = isset($list['name']) ? $list['name'] : (isset($list['list_name']) ? $list['list_name'] : '');
+                                                if (!$uid || !$name) continue;
+                                                $selected = ($list_uid === $uid) ? 'selected' : '';
+                                                echo '<option value="' . esc_attr($uid) . '" ' . $selected . '>' . esc_html($name) . '</option>';
+                                            }
+                                            ?>
+                                        </select>
+                                        <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
+                                        <input type="submit" name="df_wc_sendmailsio_save_mapping" class="button" value="Save" />
+                                    </form>
+                                    <br>
+                                    <details>
+                                        <summary style="cursor:pointer;">Create new list</summary>
+                                        <form method="post" style="margin-top:8px;">
+                                            <?php wp_nonce_field('df_wc_sendmailsio_create_list_' . $product_id, 'df_wc_sendmailsio_create_list_nonce_' . $product_id); ?>
+                                            <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
+                                            <input type="text" name="new_list_name" placeholder="List Name" required style="width:120px;" />
+                                            <input type="email" name="from_email" placeholder="From Email" required style="width:120px;" />
+                                            <input type="text" name="from_name" placeholder="From Name" required style="width:120px;" />
+                                            <input type="text" name="company" placeholder="Company" required style="width:120px;" />
+                                            <input type="text" name="contact_email" placeholder="Contact Email" required style="width:120px;" />
+                                            <input type="text" name="country_id" placeholder="Country ID" required style="width:80px;" />
+                                            <input type="text" name="city" placeholder="City" required style="width:100px;" />
+                                            <input type="text" name="state" placeholder="State" style="width:100px;" />
+                                            <input type="text" name="address_1" placeholder="Address 1" style="width:120px;" />
+                                            <input type="text" name="address_2" placeholder="Address 2" style="width:120px;" />
+                                            <input type="text" name="zip" placeholder="Zip" style="width:80px;" />
+                                            <input type="text" name="phone" placeholder="Phone" style="width:100px;" />
+                                            <input type="url" name="url" placeholder="Website (optional)" style="width:120px;" />
+                                            <input type="hidden" name="subscribe_confirmation" value="1" />
+                                            <input type="hidden" name="send_welcome_email" value="1" />
+                                            <input type="hidden" name="unsubscribe_notification" value="1" />
+                                            <input type="submit" name="df_wc_sendmailsio_create_list" class="button" value="Create & Assign" />
+                                        </form>
+                                    </details>
+                                <?php else: ?>
+                                    <em>Cannot load lists</em>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php
+                    }
+                } else {
+                    echo '<tr><td colspan="3">WooCommerce is not active.</td></tr>';
+                }
+                ?>
+            </tbody>
+        </table>
     </div>
     <?php
 }
