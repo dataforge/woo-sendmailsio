@@ -4,6 +4,7 @@ Plugin Name: DF - Woocommerce Sendmails.io
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
 Version: 0.03
 Author: radialmonster
+GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
 */
 
 if (!defined('ABSPATH')) {
