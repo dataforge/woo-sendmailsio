@@ -79,7 +79,7 @@ function df_wc_sendmailsio_settings_form() {
                 <th scope="row">Sendmails.io API Key</th>
                 <td>
                     <?php if ($api_key): ?>
-                        <input type="text" value="<?php echo esc_attr($masked_key); ?>" disabled style="width:300px;" />
+                        <span style="font-family:monospace;"><?php echo esc_html($masked_key); ?></span>
                         <br><small>Only the last 4 characters are shown. Enter a new key to overwrite.</small>
                     <?php else: ?>
                         <small>No API key set. Please enter your key below.</small>
