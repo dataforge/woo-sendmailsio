@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
-Description: Integrates WooCommerce products with sendmails.io mailing lists. Adds a settings page for API key management.
-Version: 0.02
+Description: Integrates WooCommerce products with sendmails.io mailing lists.
+Version: 0.03
 Author: radialmonster
 */
 
