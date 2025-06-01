@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
-Description: Integrates WooCommerce products with sendmails.io mailing lists.
+Description: Integrates WooCommerce products with sendmails.io mailing lists. Adds a settings page for API key management.
 Version: 0.01
 Author: radialmonster
 */
@@ -40,6 +40,23 @@ function df_wc_sendmailsio_settings_page() {
 // Settings form
 function df_wc_sendmailsio_settings_form() {
     $option_name = 'df_wc_sendmailsio_api_key';
+
+    // Handle form submission BEFORE retrieving the key for display
+    if (isset($_POST['df_wc_sendmailsio_save'])) {
+        if (!isset($_POST['df_wc_sendmailsio_nonce']) || !wp_verify_nonce($_POST['df_wc_sendmailsio_nonce'], 'df_wc_sendmailsio_save_api_key')) {
+            echo '<div class="notice notice-error"><p>Security check failed. Please try again.</p></div>';
+        } else {
+            $new_key = isset($_POST['df_wc_sendmailsio_api_key']) ? sanitize_text_field($_POST['df_wc_sendmailsio_api_key']) : '';
+            if ($new_key) {
+                update_option($option_name, $new_key);
+                echo '<div class="notice notice-success"><p>API key updated successfully.</p></div>';
+            } else {
+                echo '<div class="notice notice-warning"><p>Please enter a valid API key.</p></div>';
+            }
+        }
+    }
+
+    // Now retrieve the latest value
     $api_key = get_option($option_name, '');
     $masked_key = $api_key ? str_repeat('*', max(0, strlen($api_key) - 4)) . substr($api_key, -4) : '';
     ?>
@@ -65,19 +82,4 @@ function df_wc_sendmailsio_settings_form() {
         </p>
     </form>
     <?php
-
-    // Handle form submission
-    if (isset($_POST['df_wc_sendmailsio_save'])) {
-        if (!isset($_POST['df_wc_sendmailsio_nonce']) || !wp_verify_nonce($_POST['df_wc_sendmailsio_nonce'], 'df_wc_sendmailsio_save_api_key')) {
-            echo '<div class="notice notice-error"><p>Security check failed. Please try again.</p></div>';
-            return;
-        }
-        $new_key = isset($_POST['df_wc_sendmailsio_api_key']) ? sanitize_text_field($_POST['df_wc_sendmailsio_api_key']) : '';
-        if ($new_key) {
-            update_option($option_name, $new_key);
-            echo '<div class="notice notice-success"><p>API key updated successfully.</p></div>';
-        } else {
-            echo '<div class="notice notice-warning"><p>Please enter a valid API key.</p></div>';
-        }
-    }
 }
