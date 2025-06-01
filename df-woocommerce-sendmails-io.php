@@ -112,20 +112,41 @@ function df_wc_sendmailsio_product_mapping_page() {
                 'name' => sanitize_text_field($_POST['new_list_name']),
                 'from_email' => sanitize_email($_POST['from_email']),
                 'from_name' => sanitize_text_field($_POST['from_name']),
-                'contact[company]' => sanitize_text_field($_POST['company']),
-                'contact[email]' => sanitize_email($_POST['contact_email']),
-                'contact[country_id]' => sanitize_text_field($_POST['country_id']),
-                'contact[city]' => sanitize_text_field($_POST['city']),
-                'contact[state]' => sanitize_text_field($_POST['state']),
-                'contact[address_1]' => sanitize_text_field($_POST['address_1']),
-                'contact[address_2]' => sanitize_text_field($_POST['address_2']),
-                'contact[zip]' => sanitize_text_field($_POST['zip']),
-                'contact[phone]' => sanitize_text_field($_POST['phone']),
-                'contact[url]' => esc_url_raw($_POST['url']),
                 'subscribe_confirmation' => 1,
                 'send_welcome_email' => 1,
                 'unsubscribe_notification' => 1,
             );
+            // Optional fields
+            if (!empty($_POST['include_company'])) {
+                $fields['contact[company]'] = sanitize_text_field($_POST['company']);
+            }
+            if (!empty($_POST['include_contact_email'])) {
+                $fields['contact[email]'] = sanitize_email($_POST['contact_email']);
+            }
+            if (!empty($_POST['include_country_id'])) {
+                $fields['contact[country_id]'] = sanitize_text_field($_POST['country_id']);
+            }
+            if (!empty($_POST['include_city'])) {
+                $fields['contact[city]'] = sanitize_text_field($_POST['city']);
+            }
+            if (!empty($_POST['include_state'])) {
+                $fields['contact[state]'] = sanitize_text_field($_POST['state']);
+            }
+            if (!empty($_POST['include_address_1'])) {
+                $fields['contact[address_1]'] = sanitize_text_field($_POST['address_1']);
+            }
+            if (!empty($_POST['include_address_2'])) {
+                $fields['contact[address_2]'] = sanitize_text_field($_POST['address_2']);
+            }
+            if (!empty($_POST['include_zip'])) {
+                $fields['contact[zip]'] = sanitize_text_field($_POST['zip']);
+            }
+            if (!empty($_POST['include_phone'])) {
+                $fields['contact[phone]'] = sanitize_text_field($_POST['phone']);
+            }
+            if (!empty($_POST['include_url'])) {
+                $fields['contact[url]'] = esc_url_raw($_POST['url']);
+            }
             $api_key = get_option('df_wc_sendmailsio_api_key', '');
             $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
             if ($api_key) {
@@ -246,16 +267,26 @@ function df_wc_sendmailsio_product_mapping_page() {
                                             <input type="text" name="new_list_name" placeholder="List Name" required style="width:120px;" />
                                             <input type="email" name="from_email" placeholder="From Email" required style="width:120px;" />
                                             <input type="text" name="from_name" placeholder="From Name" required style="width:120px;" />
-                                            <input type="text" name="company" placeholder="Company" required style="width:120px;" />
-                                            <input type="text" name="contact_email" placeholder="Contact Email" required style="width:120px;" />
-                                            <input type="text" name="country_id" placeholder="Country ID" required style="width:80px;" />
-                                            <input type="text" name="city" placeholder="City" required style="width:100px;" />
+                                            <label><input type="checkbox" name="include_company" /> Company</label>
+                                            <input type="text" name="company" placeholder="Company" style="width:120px;" />
+                                            <label><input type="checkbox" name="include_contact_email" /> Contact Email</label>
+                                            <input type="text" name="contact_email" placeholder="Contact Email" style="width:120px;" />
+                                            <label><input type="checkbox" name="include_country_id" /> Country ID</label>
+                                            <input type="text" name="country_id" placeholder="Country ID" style="width:80px;" />
+                                            <label><input type="checkbox" name="include_city" /> City</label>
+                                            <input type="text" name="city" placeholder="City" style="width:100px;" />
+                                            <label><input type="checkbox" name="include_state" /> State</label>
                                             <input type="text" name="state" placeholder="State" style="width:100px;" />
+                                            <label><input type="checkbox" name="include_address_1" /> Address 1</label>
                                             <input type="text" name="address_1" placeholder="Address 1" style="width:120px;" />
+                                            <label><input type="checkbox" name="include_address_2" /> Address 2</label>
                                             <input type="text" name="address_2" placeholder="Address 2" style="width:120px;" />
+                                            <label><input type="checkbox" name="include_zip" /> Zip</label>
                                             <input type="text" name="zip" placeholder="Zip" style="width:80px;" />
+                                            <label><input type="checkbox" name="include_phone" /> Phone</label>
                                             <input type="text" name="phone" placeholder="Phone" style="width:100px;" />
-                                            <input type="url" name="url" placeholder="Website (optional)" style="width:120px;" />
+                                            <label><input type="checkbox" name="include_url" /> Website</label>
+                                            <input type="url" name="url" placeholder="Website" style="width:120px;" />
                                             <input type="hidden" name="subscribe_confirmation" value="1" />
                                             <input type="hidden" name="send_welcome_email" value="1" />
                                             <input type="hidden" name="unsubscribe_notification" value="1" />
