@@ -606,21 +606,28 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                             'order' => $order
                                                         );
                                                     }
-                                                    // Fallback: get users with 'customer' or 'subscriber' role if no orders found
-                                                    if (empty($customer_samples)) {
-                                                        $users = get_users(array(
-                                                            'role__in' => array('customer', 'subscriber'),
-                                                            'number' => 100,
-                                                            'fields' => array('ID')
-                                                        ));
-                                                        foreach ($users as $u) {
-                                                            $customer = new WC_Customer($u->ID);
-                                                            $customer_samples[] = array(
-                                                                'type' => 'user',
-                                                                'id' => $u->ID,
-                                                                'customer' => $customer
-                                                            );
+                                                    // Always include users with 'customer' or 'subscriber' role (union, not fallback)
+                                                    $users = get_users(array(
+                                                        'role__in' => array('customer', 'subscriber'),
+                                                        'number' => 100,
+                                                        'fields' => array('ID')
+                                                    ));
+                                                    foreach ($users as $u) {
+                                                        // Avoid duplicates
+                                                        $already = false;
+                                                        foreach ($customer_samples as $sample) {
+                                                            if ($sample['type'] === 'user' && $sample['id'] == $u->ID) {
+                                                                $already = true;
+                                                                break;
+                                                            }
                                                         }
+                                                        if ($already) continue;
+                                                        $customer = new WC_Customer($u->ID);
+                                                        $customer_samples[] = array(
+                                                            'type' => 'user',
+                                                            'id' => $u->ID,
+                                                            'customer' => $customer
+                                                        );
                                                     }
                                                     $sample_customer_index = isset($_POST['sample_customer_index']) ? intval($_POST['sample_customer_index']) : 0;
                                                     $sample_customer_count = count($customer_samples);
