@@ -571,8 +571,9 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                     // Fetch WooCommerce customers for sample data
                                                     global $wpdb;
                                                     $customer_samples = array();
-                                                    // Get the most recent 10 WooCommerce orders (all, including guests and users)
-                                                    $order_ids = $wpdb->get_col("SELECT ID FROM {$wpdb->posts} WHERE post_type = 'shop_order' AND post_status IN ('wc-completed','wc-processing','wc-on-hold','wc-refunded','wc-pending') ORDER BY ID DESC LIMIT 10");
+                                                    // Get the most recent 100 WooCommerce orders (all, including guests and users, any status)
+                                                    $order_ids = $wpdb->get_col("SELECT ID FROM {$wpdb->posts} WHERE post_type = 'shop_order' ORDER BY ID DESC LIMIT 100");
+                                                    echo '<div style="color:#888;font-size:12px;margin-bottom:4px;">DEBUG: Found ' . count($order_ids) . ' order IDs: ' . esc_html(implode(',', array_slice($order_ids, 0, 10))) . (count($order_ids) > 10 ? ', ...' : '') . '</div>';
                                                     foreach ($order_ids as $oid) {
                                                         $order = wc_get_order($oid);
                                                         if (!$order) continue;
