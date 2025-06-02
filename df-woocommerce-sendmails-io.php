@@ -30,10 +30,9 @@ function df_wc_sendmailsio_add_admin_menu() {
         'df-wc-sendmailsio-product-mapping',
         'df_wc_sendmailsio_product_mapping_page'
     );
-}
-
+    }
 /**
- * Settings page with tabs (only Settings for now)
+ * Handle adding a custom field to a list.
  */
 function df_wc_sendmailsio_settings_page() {
     ?>
