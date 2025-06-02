@@ -572,31 +572,13 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                     global $wpdb;
                                                     $customer_samples = array();
                                                     // Get the most recent 100 WooCommerce orders (all, including guests and users, any status) using get_posts
-                                                    // Use direct database query to bypass post status issues
-                                                    $order_posts = $wpdb->get_col(
-                                                        $wpdb->prepare(
-                                                            "SELECT ID FROM {$wpdb->posts} WHERE post_type = %s ORDER BY ID DESC LIMIT 100",
-                                                            'shop_order'
-                                                        )
-                                                    );
-                                                    // Debug: Show what statuses exist
-                                                    $status_query = $wpdb->get_results(
-                                                        "SELECT DISTINCT post_status, COUNT(*) as count FROM {$wpdb->posts} WHERE post_type = 'shop_order' GROUP BY post_status ORDER BY count DESC"
-                                                    );
-                                                    echo '<div style="color:#888;font-size:12px;">DEBUG: Order statuses in DB: ';
-                                                    foreach ($status_query as $status) {
-                                                        echo esc_html($status->post_status) . '(' . esc_html($status->count) . ') ';
-                                                    }
-                                                    echo '</div>';
-                                                    
-                                                    // Original get_posts call (commented out)
-                                                    /*$order_posts_old = get_posts(array(
+                                                    $order_posts = get_posts(array(
                                                         'post_type' => 'shop_order',
                                                         'posts_per_page' => 100,
                                                         'orderby' => 'ID',
                                                         'order' => 'DESC',
                                                         'fields' => 'ids',
-                                                        'post_status' => array('wc-pending', 'wc-processing', 'wc-on-hold', 'wc-completed', 'wc-cancelled', 'wc-refunded', 'wc-failed', 'publish', 'private')
+                                                        'post_status' => array_keys(wc_get_order_statuses())
                                                     ));
                                                     echo '<div style="color:#080;font-size:13px;margin-bottom:4px;">SUCCESS: Found ' . count($order_posts) . ' order IDs: ' . esc_html(implode(',', array_slice($order_posts, 0, 10))) . (count($order_posts) > 10 ? ', ...' : '') . '</div>';
                                                     echo '<div style="color:#888;font-size:12px;">DEBUG: post_type_exists("shop_order") = ' . (post_type_exists('shop_order') ? 'true' : 'false') . '</div>';
