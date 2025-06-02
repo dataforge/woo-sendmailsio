@@ -2,7 +2,7 @@
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.12
+Version: 0.13
 Author: radialmonster
 GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
 */
@@ -566,15 +566,69 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                     <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
                                                     <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
                                                     <strong>Add Fields from WooCommerce Customer Data</strong>
+                                                    <?php
+                                                    // Fetch WooCommerce customers for sample data
+                                                    $customer_users = get_users(array('role' => 'customer', 'number' => 100, 'fields' => array('ID')));
+                                                    $sample_customer_index = isset($_POST['sample_customer_index']) ? intval($_POST['sample_customer_index']) : 0;
+                                                    $sample_customer_count = count($customer_users);
+                                                    if ($sample_customer_count > 0) {
+                                                        if ($sample_customer_index < 0) $sample_customer_index = 0;
+                                                        if ($sample_customer_index >= $sample_customer_count) $sample_customer_index = $sample_customer_count - 1;
+                                                        $sample_customer_id = $customer_users[$sample_customer_index]->ID;
+                                                        $sample_customer = new WC_Customer($sample_customer_id);
+                                                    } else {
+                                                        $sample_customer = null;
+                                                    }
+                                                    ?>
+                                                    <form method="post" style="display:inline;">
+                                                        <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
+                                                        <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
+                                                        <input type="hidden" name="sample_customer_index" value="<?php echo max(0, $sample_customer_index - 1); ?>" />
+                                                        <button type="submit" name="df_wc_sendmailsio_sample_prev" class="button" <?php if ($sample_customer_index <= 0) echo 'disabled'; ?>>Previous</button>
+                                                    </form>
+                                                    <span style="margin:0 8px;">Sample Customer <?php echo $sample_customer_count > 0 ? ($sample_customer_index + 1) . ' of ' . $sample_customer_count : 'N/A'; ?></span>
+                                                    <form method="post" style="display:inline;">
+                                                        <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
+                                                        <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
+                                                        <input type="hidden" name="sample_customer_index" value="<?php echo min($sample_customer_count - 1, $sample_customer_index + 1); ?>" />
+                                                        <button type="submit" name="df_wc_sendmailsio_sample_next" class="button" <?php if ($sample_customer_index >= $sample_customer_count - 1) echo 'disabled'; ?>>Next</button>
+                                                    </form>
                                                     <table style="width:100%;margin-top:8px;">
                                                         <tr>
                                                             <th style="text-align:left;">Select</th>
                                                             <th style="text-align:left;">Field</th>
                                                             <th>Required</th>
                                                             <th>Visible</th>
+                                                            <th>Sample Data</th>
                                                         </tr>
                                                         <?php foreach ($wc_fields as $key => $f): 
                                                             $is_core = in_array($key, array('billing_email', 'billing_first_name', 'billing_last_name'));
+                                                            $sample_value = '';
+                                                            if ($sample_customer) {
+                                                                // Map field key to WC_Customer getter
+                                                                switch ($key) {
+                                                                    case 'billing_first_name': $sample_value = $sample_customer->get_billing_first_name(); break;
+                                                                    case 'billing_last_name': $sample_value = $sample_customer->get_billing_last_name(); break;
+                                                                    case 'billing_email': $sample_value = $sample_customer->get_billing_email(); break;
+                                                                    case 'billing_phone': $sample_value = $sample_customer->get_billing_phone(); break;
+                                                                    case 'billing_company': $sample_value = $sample_customer->get_billing_company(); break;
+                                                                    case 'billing_address_1': $sample_value = $sample_customer->get_billing_address_1(); break;
+                                                                    case 'billing_address_2': $sample_value = $sample_customer->get_billing_address_2(); break;
+                                                                    case 'billing_city': $sample_value = $sample_customer->get_billing_city(); break;
+                                                                    case 'billing_state': $sample_value = $sample_customer->get_billing_state(); break;
+                                                                    case 'billing_postcode': $sample_value = $sample_customer->get_billing_postcode(); break;
+                                                                    case 'billing_country': $sample_value = $sample_customer->get_billing_country(); break;
+                                                                    case 'shipping_first_name': $sample_value = $sample_customer->get_shipping_first_name(); break;
+                                                                    case 'shipping_last_name': $sample_value = $sample_customer->get_shipping_last_name(); break;
+                                                                    case 'shipping_company': $sample_value = $sample_customer->get_shipping_company(); break;
+                                                                    case 'shipping_address_1': $sample_value = $sample_customer->get_shipping_address_1(); break;
+                                                                    case 'shipping_address_2': $sample_value = $sample_customer->get_shipping_address_2(); break;
+                                                                    case 'shipping_city': $sample_value = $sample_customer->get_shipping_city(); break;
+                                                                    case 'shipping_state': $sample_value = $sample_customer->get_shipping_state(); break;
+                                                                    case 'shipping_postcode': $sample_value = $sample_customer->get_shipping_postcode(); break;
+                                                                    case 'shipping_country': $sample_value = $sample_customer->get_shipping_country(); break;
+                                                                }
+                                                            }
                                                         ?>
                                                         <tr>
                                                             <td>
@@ -594,6 +648,9 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                             <td style="text-align:center;">
                                                                 <input type="checkbox" name="wc_field_visible[<?php echo esc_attr($key); ?>]" value="1" 
                                                                 <?php if ($is_core): ?> checked disabled <?php else: ?> checked <?php endif; ?> />
+                                                            </td>
+                                                            <td style="text-align:center;">
+                                                                <?php echo $sample_value !== '' ? esc_html($sample_value) : '<span style="color:#aaa;">(empty)</span>'; ?>
                                                             </td>
                                                         </tr>
                                                         <?php endforeach; ?>
