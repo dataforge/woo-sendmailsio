@@ -624,8 +624,17 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         );
                                                     }
                                                     $sample_customer_index = isset($_POST['sample_customer_index']) ? intval($_POST['sample_customer_index']) : 0;
+
+                                                    // Handle navigation for sample customers
+                                                    if (isset($_POST['df_wc_sendmailsio_sample_next'])) {
+                                                        $sample_customer_index++;
+                                                    } elseif (isset($_POST['df_wc_sendmailsio_sample_prev'])) {
+                                                        $sample_customer_index--;
+                                                    }
+
                                                     $sample_customer_count = count($customer_samples);
                                                     if ($sample_customer_count > 0) {
+                                                        // Ensure index stays within bounds
                                                         if ($sample_customer_index < 0) $sample_customer_index = 0;
                                                         if ($sample_customer_index >= $sample_customer_count) $sample_customer_index = $sample_customer_count - 1;
                                                         $sample = $customer_samples[$sample_customer_index];
