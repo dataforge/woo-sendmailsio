@@ -573,12 +573,28 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                             <th>Required</th>
                                                             <th>Visible</th>
                                                         </tr>
-                                                        <?php foreach ($wc_fields as $key => $f): ?>
+                                                        <?php foreach ($wc_fields as $key => $f): 
+                                                            $is_core = in_array($key, array('billing_email', 'billing_first_name', 'billing_last_name'));
+                                                        ?>
                                                         <tr>
-                                                            <td><input type="checkbox" name="wc_fields[]" value="<?php echo esc_attr($key); ?>" id="wc_field_<?php echo esc_attr($key); ?>" /></td>
-                                                            <td><label for="wc_field_<?php echo esc_attr($key); ?>"><?php echo esc_html($f['label']); ?></label></td>
-                                                            <td style="text-align:center;"><input type="checkbox" name="wc_field_required[<?php echo esc_attr($key); ?>]" value="1" /></td>
-                                                            <td style="text-align:center;"><input type="checkbox" name="wc_field_visible[<?php echo esc_attr($key); ?>]" value="1" checked /></td>
+                                                            <td>
+                                                                <input type="checkbox" name="wc_fields[]" value="<?php echo esc_attr($key); ?>" id="wc_field_<?php echo esc_attr($key); ?>"
+                                                                <?php if ($is_core): ?> checked disabled <?php endif; ?> />
+                                                            </td>
+                                                            <td>
+                                                                <label for="wc_field_<?php echo esc_attr($key); ?>"><?php echo esc_html($f['label']); ?></label>
+                                                                <?php if ($is_core): ?>
+                                                                    <span style="color:#888;font-size:11px;">(Required by Sendmails.io, mapped to WooCommerce)</span>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td style="text-align:center;">
+                                                                <input type="checkbox" name="wc_field_required[<?php echo esc_attr($key); ?>]" value="1"
+                                                                <?php if ($is_core): ?> checked disabled <?php endif; ?> />
+                                                            </td>
+                                                            <td style="text-align:center;">
+                                                                <input type="checkbox" name="wc_field_visible[<?php echo esc_attr($key); ?>]" value="1" 
+                                                                <?php if ($is_core): ?> checked disabled <?php else: ?> checked <?php endif; ?> />
+                                                            </td>
                                                         </tr>
                                                         <?php endforeach; ?>
                                                     </table>
