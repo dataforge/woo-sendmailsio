@@ -580,6 +580,16 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         'fields' => 'ids'
                                                     ));
                                                     echo '<div style="color:#888;font-size:12px;margin-bottom:4px;">DEBUG: get_posts found ' . count($order_posts) . ' order IDs: ' . esc_html(implode(',', array_slice($order_posts, 0, 10))) . (count($order_posts) > 10 ? ', ...' : '') . '</div>';
+                                                    // Directly check specific order IDs for debugging
+                                                    $debug_ids = array(1029, 1017);
+                                                    foreach ($debug_ids as $did) {
+                                                        $o = wc_get_order($did);
+                                                        if ($o) {
+                                                            echo '<div style="color:#c00;font-size:12px;">DEBUG: Order ' . $did . ' found. Billing email: ' . esc_html($o->get_billing_email()) . ', Billing name: ' . esc_html($o->get_billing_first_name() . ' ' . $o->get_billing_last_name()) . '</div>';
+                                                        } else {
+                                                            echo '<div style="color:#c00;font-size:12px;">DEBUG: Order ' . $did . ' NOT FOUND.</div>';
+                                                        }
+                                                    }
                                                     foreach ($order_posts as $oid) {
                                                         $order = wc_get_order($oid);
                                                         if (!$order) continue;
