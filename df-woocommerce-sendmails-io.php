@@ -578,7 +578,7 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         'orderby' => 'ID',
                                                         'order' => 'DESC',
                                                         'fields' => 'ids',
-                                                        'post_status' => array_keys(wc_get_order_statuses())
+                                                        'post_status' => 'any'
                                                     ));
                                                     echo '<div style="color:#080;font-size:13px;margin-bottom:4px;">SUCCESS: Found ' . count($order_posts) . ' order IDs: ' . esc_html(implode(',', array_slice($order_posts, 0, 10))) . (count($order_posts) > 10 ? ', ...' : '') . '</div>';
                                                     echo '<div style="color:#888;font-size:12px;">DEBUG: post_type_exists("shop_order") = ' . (post_type_exists('shop_order') ? 'true' : 'false') . '</div>';
