@@ -579,8 +579,7 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         'order' => 'DESC',
                                                         'fields' => 'ids'
                                                     ));
-                                                    echo '<div style="color:#888;font-size:12px;margin-bottom:4px;">DEBUG: get_posts found ' . count($order_posts) . ' order IDs: ' . esc_html(implode(',', array_slice($order_posts, 0, 10))) . (count($order_posts) > 10 ? ', ...' : '') . '</div>';
-                                                    // Directly check specific order IDs for debugging
+                                                    echo '<div style="color:#c00;font-size:13px;margin-bottom:4px;">WARNING: get_posts found ' . count($order_posts) . ' order IDs. Using hardcoded order IDs [1029, 1017] for sample data navigation.</div>';
                                                     $debug_ids = array(1029, 1017);
                                                     foreach ($debug_ids as $did) {
                                                         $o = wc_get_order($did);
@@ -590,7 +589,9 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                             echo '<div style="color:#c00;font-size:12px;">DEBUG: Order ' . $did . ' NOT FOUND.</div>';
                                                         }
                                                     }
-                                                    foreach ($order_posts as $oid) {
+                                                    // Use hardcoded order IDs for navigation
+                                                    $customer_samples = array();
+                                                    foreach ($debug_ids as $oid) {
                                                         $order = wc_get_order($oid);
                                                         if (!$order) continue;
                                                         $customer_samples[] = array(
