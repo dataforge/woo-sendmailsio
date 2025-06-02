@@ -9,7 +9,6 @@ GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
-}
 
 add_action('admin_menu', 'df_wc_sendmailsio_add_admin_menu');
 function df_wc_sendmailsio_add_admin_menu() {
