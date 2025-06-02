@@ -572,19 +572,46 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                     global $wpdb;
                                                     $customer_samples = array();
                                                     // Get the most recent 100 WooCommerce orders (all, including guests and users, any status) using get_posts
-                                                    $order_posts = get_posts(array(
+                                                    // Use direct database query to bypass WordPress post status filtering
+                                                    $order_posts = $wpdb->get_col(
+                                                        $wpdb->prepare(
+                                                            "SELECT ID FROM {$wpdb->posts} WHERE post_type = %s ORDER BY ID DESC LIMIT 100",
+                                                            'shop_order'
+                                                        )
+                                                    );
+                                                    // Convert to integers for consistency
+                                                    $order_posts = array_map('intval', $order_posts);
+
+                                                    // Add debug logging for the direct database query result
+                                                    error_log('DF_WC_SENDMAILS_IO DEBUG: $wpdb->get_col order_posts: ' . print_r($order_posts, true));
+
+                                                    // Debug: Show what post statuses actually exist
+                                                    $status_debug = $wpdb->get_results(
+                                                        "SELECT post_status, COUNT(*) as count FROM {$wpdb->posts} WHERE post_type = 'shop_order' GROUP BY post_status ORDER BY count DESC"
+                                                    );
+                                                    echo '<div style="color:#888;font-size:12px;">DEBUG: Order statuses in DB: ';
+                                                    foreach ($status_debug as $status) {
+                                                        echo esc_html($status->post_status) . '(' . esc_html($status->count) . ') ';
+                                                    }
+                                                    echo '</div>';
+
+                                                    // Use get_posts with 'post_status' => 'any' for comparison
+                                                    $order_posts_get_posts = get_posts(array(
                                                         'post_type' => 'shop_order',
                                                         'posts_per_page' => 100,
                                                         'orderby' => 'ID',
                                                         'order' => 'DESC',
                                                         'fields' => 'ids',
-                                                        'post_status' => 'any'
+                                                        'post_status' => 'any' // Crucial for getting all statuses
                                                     ));
-                                                    echo '<div style="color:#080;font-size:13px;margin-bottom:4px;">SUCCESS: Found ' . count($order_posts) . ' order IDs: ' . esc_html(implode(',', array_slice($order_posts, 0, 10))) . (count($order_posts) > 10 ? ', ...' : '') . '</div>';
+                                                    error_log('DF_WC_SENDMAILS_IO DEBUG: get_posts order_posts_get_posts: ' . print_r($order_posts_get_posts, true));
+
+                                                    echo '<div style="color:#080;font-size:13px;margin-bottom:4px;">SUCCESS: Found ' . count($order_posts) . ' order IDs (from $wpdb): ' . esc_html(implode(',', array_slice($order_posts, 0, 10))) . (count($order_posts) > 10 ? ', ...' : '') . '</div>';
+                                                    echo '<div style="color:#080;font-size:13px;margin-bottom:4px;">SUCCESS: Found ' . count($order_posts_get_posts) . ' order IDs (from get_posts): ' . esc_html(implode(',', array_slice($order_posts_get_posts, 0, 10))) . (count($order_posts_get_posts) > 10 ? ', ...' : '') . '</div>';
                                                     echo '<div style="color:#888;font-size:12px;">DEBUG: post_type_exists("shop_order") = ' . (post_type_exists('shop_order') ? 'true' : 'false') . '</div>';
                                                     echo '<div style="color:#888;font-size:12px;">DEBUG: Registered post types: ' . esc_html(implode(', ', get_post_types())) . '</div>';
-                                                    $test_order_ids = get_posts(array('post_type'=>'shop_order','posts_per_page'=>1,'fields'=>'ids'));
-                                                    echo '<div style="color:#888;font-size:12px;">DEBUG: get_posts for 1 shop_order: ' . esc_html(implode(',', $test_order_ids)) . '</div>';
+                                                    $test_order_ids = get_posts(array('post_type'=>'shop_order','posts_per_page'=>1,'fields'=>'ids', 'post_status' => 'any'));
+                                                    echo '<div style="color:#888;font-size:12px;">DEBUG: get_posts for 1 shop_order (any status): ' . esc_html(implode(',', $test_order_ids)) . '</div>';
                                                     $debug_ids = array(1029, 1017);
                                                     foreach ($debug_ids as $did) {
                                                         $o = wc_get_order($did);
@@ -594,9 +621,9 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                             echo '<div style="color:#c00;font-size:12px;">DEBUG: Order ' . $did . ' NOT FOUND.</div>';
                                                         }
                                                     }
-                                                    // Use the found order IDs for navigation
+                                                    // Use the found order IDs for navigation, preferring get_posts results if available
                                                     $customer_samples = array();
-                                                    $order_ids_to_use = !empty($order_posts) ? $order_posts : $debug_ids;
+                                                    $order_ids_to_use = !empty($order_posts_get_posts) ? $order_posts_get_posts : (!empty($order_posts) ? $order_posts : $debug_ids);
                                                     foreach ($order_ids_to_use as $oid) {
                                                         $order = wc_get_order($oid);
                                                         if (!$order) continue;
