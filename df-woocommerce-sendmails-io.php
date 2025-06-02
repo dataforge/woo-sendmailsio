@@ -2,7 +2,7 @@
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.08
+Version: 0.09
 Author: radialmonster
 GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
 */
@@ -315,8 +315,8 @@ function df_wc_sendmailsio_product_mapping_page() {
             <thead>
                 <tr>
                     <th>Product</th>
-                    <th class="df-wc-sendmailsio-current-list-col">Current List</th>
-                    <th>Action</th>
+                    <th class="df-wc-sendmailsio-current-list-col">Current List ID</th>
+                    <th>Assigned List</th>
                 </tr>
             </thead>
             <tbody>
@@ -367,6 +367,13 @@ function df_wc_sendmailsio_product_mapping_page() {
                                         <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
                                         <input type="submit" name="df_wc_sendmailsio_save_mapping" class="button" value="Save" />
                                     </form>
+                                    <?php if ($list_uid): ?>
+                                        <form method="post" style="display:inline;">
+                                            <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
+                                            <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
+                                            <input type="submit" name="df_wc_sendmailsio_show_fields" class="button" value="Manage List Fields" />
+                                        </form>
+                                    <?php endif; ?>
                                     <br>
                                     <details>
                                         <summary style="cursor:pointer;">Create new list</summary>
@@ -422,6 +429,60 @@ function df_wc_sendmailsio_product_mapping_page() {
                                         </form>
                                         <!-- List Fields section will be rendered after list creation -->
                                     </details>
+                                    <?php
+                                    // Show List Fields section if requested
+                                    if (!empty($_POST['df_wc_sendmailsio_show_fields']) && !empty($_POST['list_uid']) && intval($_POST['product_id']) === $product_id) {
+                                        $api_key = get_option('df_wc_sendmailsio_api_key', '');
+                                        $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
+                                        $list_api_url = trailingslashit($api_endpoint) . 'lists/' . urlencode($list_uid);
+                                        $list_api_url = add_query_arg('api_token', $api_key, $list_api_url);
+                                        $list_response = wp_remote_get($list_api_url, array('headers' => array('Accept' => 'application/json'), 'timeout' => 15));
+                                        if (!is_wp_error($list_response) && wp_remote_retrieve_response_code($list_response) === 200) {
+                                            $list_info = json_decode(wp_remote_retrieve_body($list_response), true);
+                                            if (is_array($list_info)) {
+                                                echo '<fieldset style="border:1px solid #ccc;padding:8px;margin-top:16px;"><legend style="font-weight:bold;">List Fields</legend>';
+                                                echo '<div><strong>Fields:</strong></div>';
+                                                if (!empty($list_info['fields']) && is_array($list_info['fields'])) {
+                                                    echo '<ul>';
+                                                    foreach ($list_info['fields'] as $field) {
+                                                        $label = isset($field['label']) ? esc_html($field['label']) : '';
+                                                        $tag = isset($field['tag']) ? esc_html($field['tag']) : '';
+                                                        $type = isset($field['type']) ? esc_html($field['type']) : '';
+                                                        echo "<li><strong>$label</strong> ($tag) [$type]</li>";
+                                                    }
+                                                    echo '</ul>';
+                                                } else {
+                                                    echo '<em>No fields found.</em>';
+                                                }
+                                                // Add custom field form
+                                                ?>
+                                                <form method="post" style="margin-top:12px;">
+                                                    <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
+                                                    <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
+                                                    <label>Type
+                                                        <select name="field_type" required>
+                                                            <option value="text">Text</option>
+                                                            <option value="number">Number</option>
+                                                            <option value="datetime">Datetime</option>
+                                                        </select>
+                                                    </label>
+                                                    <label>Label
+                                                        <input type="text" name="field_label" required />
+                                                    </label>
+                                                    <label>Tag
+                                                        <input type="text" name="field_tag" required />
+                                                    </label>
+                                                    <label>Default Value
+                                                        <input type="text" name="field_default_value" />
+                                                    </label>
+                                                    <input type="submit" name="df_wc_sendmailsio_add_field" class="button" value="Add Field" />
+                                                </form>
+                                                <?php
+                                                echo '</fieldset>';
+                                            }
+                                        }
+                                    }
+                                    ?>
                                 <?php else: ?>
                                     <em>Cannot load lists</em>
                                 <?php endif; ?>
