@@ -2,7 +2,7 @@
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.09
+Version: 0.10
 Author: radialmonster
 GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
 */
@@ -442,13 +442,13 @@ function df_wc_sendmailsio_product_mapping_page() {
                                             if (is_array($list_info)) {
                                                 echo '<fieldset style="border:1px solid #ccc;padding:8px;margin-top:16px;"><legend style="font-weight:bold;">List Fields</legend>';
                                                 echo '<div><strong>Fields:</strong></div>';
-                                                // DEBUG: Show raw response for troubleshooting
-                                                echo '<pre style="background:#f8f8f8;border:1px solid #eee;padding:4px;font-size:11px;">API fields debug: ' . esc_html(print_r($list_info, true)) . '</pre>';
                                                 $fields_array = null;
                                                 if (isset($list_info['fields']) && is_array($list_info['fields'])) {
                                                     $fields_array = $list_info['fields'];
                                                 } elseif (isset($list_info['data']['fields']) && is_array($list_info['data']['fields'])) {
                                                     $fields_array = $list_info['data']['fields'];
+                                                } elseif (isset($list_info['list']['fields']) && is_array($list_info['list']['fields'])) {
+                                                    $fields_array = $list_info['list']['fields'];
                                                 }
                                                 if (!empty($fields_array)) {
                                                     echo '<ul>';
