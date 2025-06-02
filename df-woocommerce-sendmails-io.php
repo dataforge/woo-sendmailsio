@@ -612,7 +612,7 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                             $is_core = in_array($key, array('billing_email', 'billing_first_name', 'billing_last_name'));
                                                             $sample_value = '';
                                                             if ($sample_order) {
-                                                                // Map field key to WC_Order getter
+                                                                // Always use WC_Order getter for all fields
                                                                 switch ($key) {
                                                                     case 'billing_first_name': $sample_value = $sample_order->get_billing_first_name(); break;
                                                                     case 'billing_last_name': $sample_value = $sample_order->get_billing_last_name(); break;
