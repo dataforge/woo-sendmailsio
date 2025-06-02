@@ -2,7 +2,7 @@
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.10
+Version: 0.11
 Author: radialmonster
 GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
 */
@@ -162,21 +162,25 @@ function df_wc_sendmailsio_product_mapping_page() {
                     if (!empty($list_info['fields']) && is_array($list_info['fields'])) {
                         echo '<ul>';
                         foreach ($list_info['fields'] as $field) {
-                            $label = isset($field['label']) ? esc_html($field['label']) : '';
-                            $tag = isset($field['tag']) ? esc_html($field['tag']) : '';
-                            $type = isset($field['type']) ? esc_html($field['type']) : '';
-                            $default = isset($field['default_value']) ? esc_html($field['default_value']) : '';
-                            $required = isset($field['required']) && $field['required'] ? 'Yes' : 'No';
-                            $visible = isset($field['visible']) && $field['visible'] ? 'Yes' : 'No';
-                            $options = '';
-                            if (isset($field['options']) && is_array($field['options'])) {
-                                $options = 'Options: ' . esc_html(implode(', ', $field['options']));
+                            echo '<li><ul style="margin-bottom:8px;">';
+                            echo '<li><strong>Label:</strong> ' . (isset($field['label']) ? esc_html($field['label']) : '<em>n/a</em>') . '</li>';
+                            echo '<li><strong>Type:</strong> ' . (isset($field['type']) ? esc_html($field['type']) : '<em>n/a</em>') . '</li>';
+                            echo '<li><strong>Tag:</strong> ' . (isset($field['tag']) ? esc_html($field['tag']) : '<em>n/a</em>') . '</li>';
+                            echo '<li><strong>Required:</strong> ' . (isset($field['required']) && $field['required'] ? 'Yes' : 'No') . '</li>';
+                            echo '<li><strong>Visible:</strong> ' . (isset($field['visible']) && $field['visible'] ? 'Yes' : 'No') . '</li>';
+                            if (isset($field['default_value']) && $field['default_value'] !== '') {
+                                echo '<li><strong>Default Value:</strong> ' . esc_html($field['default_value']) . '</li>';
                             }
-                            echo "<li><strong>$label</strong> ($tag) [$type]";
-                            if ($default !== '') echo " | Default: $default";
-                            echo " | Required: $required | Visible: $visible";
-                            if ($options) echo " | $options";
-                            echo "</li>";
+                            if (isset($field['options']) && is_array($field['options']) && count($field['options'])) {
+                                echo '<li><strong>Options:</strong> ' . esc_html(implode(', ', $field['options'])) . '</li>';
+                            }
+                            // Show any other properties
+                            foreach ($field as $k => $v) {
+                                if (in_array($k, array('label','type','tag','required','visible','default_value','options'))) continue;
+                                if (is_array($v)) $v = json_encode($v);
+                                echo '<li><strong>' . esc_html(ucwords(str_replace('_',' ',$k))) . ':</strong> ' . esc_html($v) . '</li>';
+                            }
+                            echo '</ul></li>';
                         }
                         echo '</ul>';
                     } else {
@@ -466,8 +470,13 @@ function df_wc_sendmailsio_product_mapping_page() {
                                             if (is_array($list_info)) {
                                                 echo '<fieldset style="border:1px solid #ccc;padding:8px;margin-top:16px;"><legend style="font-weight:bold;">List Fields</legend>';
                                                 echo '<div><strong>Fields:</strong></div>';
-                                                // Debug printout of the list JSON fields
-                                                echo '<pre style="background:#f8f8f8;border:1px solid #eee;padding:4px;font-size:11px;">API fields debug: ' . esc_html(print_r($list_info, true)) . '</pre>';
+                                                // Debug printout of the list JSON fields (hidden by default, toggle with button)
+                                                ?>
+                                                <button type="button" onclick="var dbg=document.getElementById('df-wc-sendmailsio-json-debug-<?php echo esc_attr($list_uid); ?>');if(dbg.style.display==='none'){dbg.style.display='block';this.textContent='Hide API JSON Debug';}else{dbg.style.display='none';this.textContent='Show API JSON Debug';}">Show API JSON Debug</button>
+                                                <div id="df-wc-sendmailsio-json-debug-<?php echo esc_attr($list_uid); ?>" style="display:none;">
+                                                    <pre style="background:#f8f8f8;border:1px solid #eee;padding:4px;font-size:11px;">API fields debug: <?php echo esc_html(print_r($list_info, true)); ?></pre>
+                                                </div>
+                                                <?php
                                                 $fields_array = null;
                                                 if (isset($list_info['fields']) && is_array($list_info['fields'])) {
                                                     $fields_array = $list_info['fields'];
