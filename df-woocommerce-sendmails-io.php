@@ -580,6 +580,10 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         'fields' => 'ids'
                                                     ));
                                                     echo '<div style="color:#c00;font-size:13px;margin-bottom:4px;">WARNING: get_posts found ' . count($order_posts) . ' order IDs. Using hardcoded order IDs [1029, 1017] for sample data navigation.</div>';
+                                                    echo '<div style="color:#888;font-size:12px;">DEBUG: post_type_exists("shop_order") = ' . (post_type_exists('shop_order') ? 'true' : 'false') . '</div>';
+                                                    echo '<div style="color:#888;font-size:12px;">DEBUG: Registered post types: ' . esc_html(implode(', ', get_post_types())) . '</div>';
+                                                    $test_order_ids = get_posts(array('post_type'=>'shop_order','posts_per_page'=>1,'fields'=>'ids'));
+                                                    echo '<div style="color:#888;font-size:12px;">DEBUG: get_posts for 1 shop_order: ' . esc_html(implode(',', $test_order_ids)) . '</div>';
                                                     $debug_ids = array(1029, 1017);
                                                     foreach ($debug_ids as $did) {
                                                         $o = wc_get_order($did);
