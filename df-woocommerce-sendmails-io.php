@@ -611,29 +611,29 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         <?php foreach ($wc_fields as $key => $f): 
                                                             $is_core = in_array($key, array('billing_email', 'billing_first_name', 'billing_last_name'));
                                                             $sample_value = '';
-                                                            if ($sample_customer) {
-                                                                // Map field key to WC_Customer getter
+                                                            if ($sample_order) {
+                                                                // Map field key to WC_Order getter
                                                                 switch ($key) {
-                                                                    case 'billing_first_name': $sample_value = $sample_customer->get_billing_first_name(); break;
-                                                                    case 'billing_last_name': $sample_value = $sample_customer->get_billing_last_name(); break;
-                                                                    case 'billing_email': $sample_value = $sample_customer->get_billing_email(); break;
-                                                                    case 'billing_phone': $sample_value = $sample_customer->get_billing_phone(); break;
-                                                                    case 'billing_company': $sample_value = $sample_customer->get_billing_company(); break;
-                                                                    case 'billing_address_1': $sample_value = $sample_customer->get_billing_address_1(); break;
-                                                                    case 'billing_address_2': $sample_value = $sample_customer->get_billing_address_2(); break;
-                                                                    case 'billing_city': $sample_value = $sample_customer->get_billing_city(); break;
-                                                                    case 'billing_state': $sample_value = $sample_customer->get_billing_state(); break;
-                                                                    case 'billing_postcode': $sample_value = $sample_customer->get_billing_postcode(); break;
-                                                                    case 'billing_country': $sample_value = $sample_customer->get_billing_country(); break;
-                                                                    case 'shipping_first_name': $sample_value = $sample_customer->get_shipping_first_name(); break;
-                                                                    case 'shipping_last_name': $sample_value = $sample_customer->get_shipping_last_name(); break;
-                                                                    case 'shipping_company': $sample_value = $sample_customer->get_shipping_company(); break;
-                                                                    case 'shipping_address_1': $sample_value = $sample_customer->get_shipping_address_1(); break;
-                                                                    case 'shipping_address_2': $sample_value = $sample_customer->get_shipping_address_2(); break;
-                                                                    case 'shipping_city': $sample_value = $sample_customer->get_shipping_city(); break;
-                                                                    case 'shipping_state': $sample_value = $sample_customer->get_shipping_state(); break;
-                                                                    case 'shipping_postcode': $sample_value = $sample_customer->get_shipping_postcode(); break;
-                                                                    case 'shipping_country': $sample_value = $sample_customer->get_shipping_country(); break;
+                                                                    case 'billing_first_name': $sample_value = $sample_order->get_billing_first_name(); break;
+                                                                    case 'billing_last_name': $sample_value = $sample_order->get_billing_last_name(); break;
+                                                                    case 'billing_email': $sample_value = $sample_order->get_billing_email(); break;
+                                                                    case 'billing_phone': $sample_value = $sample_order->get_billing_phone(); break;
+                                                                    case 'billing_company': $sample_value = $sample_order->get_billing_company(); break;
+                                                                    case 'billing_address_1': $sample_value = $sample_order->get_billing_address_1(); break;
+                                                                    case 'billing_address_2': $sample_value = $sample_order->get_billing_address_2(); break;
+                                                                    case 'billing_city': $sample_value = $sample_order->get_billing_city(); break;
+                                                                    case 'billing_state': $sample_value = $sample_order->get_billing_state(); break;
+                                                                    case 'billing_postcode': $sample_value = $sample_order->get_billing_postcode(); break;
+                                                                    case 'billing_country': $sample_value = $sample_order->get_billing_country(); break;
+                                                                    case 'shipping_first_name': $sample_value = $sample_order->get_shipping_first_name(); break;
+                                                                    case 'shipping_last_name': $sample_value = $sample_order->get_shipping_last_name(); break;
+                                                                    case 'shipping_company': $sample_value = $sample_order->get_shipping_company(); break;
+                                                                    case 'shipping_address_1': $sample_value = $sample_order->get_shipping_address_1(); break;
+                                                                    case 'shipping_address_2': $sample_value = $sample_order->get_shipping_address_2(); break;
+                                                                    case 'shipping_city': $sample_value = $sample_order->get_shipping_city(); break;
+                                                                    case 'shipping_state': $sample_value = $sample_order->get_shipping_state(); break;
+                                                                    case 'shipping_postcode': $sample_value = $sample_order->get_shipping_postcode(); break;
+                                                                    case 'shipping_country': $sample_value = $sample_order->get_shipping_country(); break;
                                                                 }
                                                             }
                                                         ?>
