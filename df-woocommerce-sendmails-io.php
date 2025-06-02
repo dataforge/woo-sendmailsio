@@ -578,9 +578,9 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         'orderby' => 'ID',
                                                         'order' => 'DESC',
                                                         'fields' => 'ids',
-                                                        'post_status' => 'any'
+                                                        'post_status' => array_keys(wc_get_order_statuses())
                                                     ));
-                                                    echo '<div style="color:#c00;font-size:13px;margin-bottom:4px;">WARNING: get_posts (post_status=any) found ' . count($order_posts) . ' order IDs: ' . esc_html(implode(',', array_slice($order_posts, 0, 10))) . (count($order_posts) > 10 ? ', ...' : '') . '. Using hardcoded order IDs [1029, 1017] for sample data navigation.</div>';
+                                                    echo '<div style="color:#080;font-size:13px;margin-bottom:4px;">SUCCESS: Found ' . count($order_posts) . ' order IDs: ' . esc_html(implode(',', array_slice($order_posts, 0, 10))) . (count($order_posts) > 10 ? ', ...' : '') . '</div>';
                                                     echo '<div style="color:#888;font-size:12px;">DEBUG: post_type_exists("shop_order") = ' . (post_type_exists('shop_order') ? 'true' : 'false') . '</div>';
                                                     echo '<div style="color:#888;font-size:12px;">DEBUG: Registered post types: ' . esc_html(implode(', ', get_post_types())) . '</div>';
                                                     $test_order_ids = get_posts(array('post_type'=>'shop_order','posts_per_page'=>1,'fields'=>'ids'));
@@ -594,9 +594,10 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                             echo '<div style="color:#c00;font-size:12px;">DEBUG: Order ' . $did . ' NOT FOUND.</div>';
                                                         }
                                                     }
-                                                    // Use hardcoded order IDs for navigation
+                                                    // Use the found order IDs for navigation
                                                     $customer_samples = array();
-                                                    foreach ($debug_ids as $oid) {
+                                                    $order_ids_to_use = !empty($order_posts) ? $order_posts : $debug_ids;
+                                                    foreach ($order_ids_to_use as $oid) {
                                                         $order = wc_get_order($oid);
                                                         if (!$order) continue;
                                                         $customer_samples[] = array(
