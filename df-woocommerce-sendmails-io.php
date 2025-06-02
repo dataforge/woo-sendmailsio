@@ -442,6 +442,8 @@ function df_wc_sendmailsio_product_mapping_page() {
                                             if (is_array($list_info)) {
                                                 echo '<fieldset style="border:1px solid #ccc;padding:8px;margin-top:16px;"><legend style="font-weight:bold;">List Fields</legend>';
                                                 echo '<div><strong>Fields:</strong></div>';
+                                                // Debug printout of the list JSON fields
+                                                echo '<pre style="background:#f8f8f8;border:1px solid #eee;padding:4px;font-size:11px;">API fields debug: ' . esc_html(print_r($list_info, true)) . '</pre>';
                                                 $fields_array = null;
                                                 if (isset($list_info['fields']) && is_array($list_info['fields'])) {
                                                     $fields_array = $list_info['fields'];
@@ -471,7 +473,14 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         <select name="field_type" required>
                                                             <option value="text">Text</option>
                                                             <option value="number">Number</option>
+                                                            <option value="dropdown">Dropdown</option>
+                                                            <option value="multiselect">Multiselect</option>
+                                                            <option value="checkbox">Checkbox</option>
+                                                            <option value="radio">Radio</option>
+                                                            <option value="date">Date</option>
                                                             <option value="datetime">Datetime</option>
+                                                            <option value="textarea">Textarea</option>
+                                                            <option value="phone">Phone Number</option>
                                                         </select>
                                                     </label>
                                                     <label>Label
