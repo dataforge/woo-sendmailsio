@@ -2,7 +2,7 @@
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.06
+Version: 0.07
 Author: radialmonster
 GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
 */
@@ -104,6 +104,90 @@ function df_wc_sendmailsio_product_mapping_page() {
         }
     }
 
+    // Handle add custom field to list
+    if (!empty($_POST['df_wc_sendmailsio_add_field']) && !empty($_POST['list_uid']) && !empty($_POST['product_id'])) {
+        $list_uid = sanitize_text_field($_POST['list_uid']);
+        $product_id = intval($_POST['product_id']);
+        $api_key = get_option('df_wc_sendmailsio_api_key', '');
+        $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
+        if ($api_key && $list_uid) {
+            $add_field_url = trailingslashit($api_endpoint) . 'lists/' . urlencode($list_uid) . '/add-field';
+            $add_field_url = add_query_arg('api_token', $api_key, $add_field_url);
+            $field_data = array(
+                'type' => sanitize_text_field($_POST['field_type']),
+                'label' => sanitize_text_field($_POST['field_label']),
+                'tag' => sanitize_text_field($_POST['field_tag']),
+            );
+            if (!empty($_POST['field_default_value'])) {
+                $field_data['default_value'] = sanitize_text_field($_POST['field_default_value']);
+            }
+            $add_field_response = wp_remote_post($add_field_url, array(
+                'headers' => array('Accept' => 'application/json'),
+                'body' => $field_data,
+                'timeout' => 15,
+            ));
+            if (is_wp_error($add_field_response)) {
+                echo '<div class="notice notice-error"><p>API error: ' . esc_html($add_field_response->get_error_message()) . '</p></div>';
+            } else {
+                $code = wp_remote_retrieve_response_code($add_field_response);
+                $body = wp_remote_retrieve_body($add_field_response);
+                if ($code === 200) {
+                    echo '<div class="notice notice-success"><p>Custom field added successfully.</p></div>';
+                } else {
+                    echo '<div class="notice notice-error"><p>Failed to add field: ' . esc_html($body) . '</p></div>';
+                }
+            }
+            // Fetch and display updated fields
+            $list_api_url = trailingslashit($api_endpoint) . 'lists/' . urlencode($list_uid);
+            $list_api_url = add_query_arg('api_token', $api_key, $list_api_url);
+            $list_response = wp_remote_get($list_api_url, array('headers' => array('Accept' => 'application/json'), 'timeout' => 15));
+            if (!is_wp_error($list_response) && wp_remote_retrieve_response_code($list_response) === 200) {
+                $list_info = json_decode(wp_remote_retrieve_body($list_response), true);
+                if (is_array($list_info)) {
+                    echo '<fieldset style="border:1px solid #ccc;padding:8px;margin-top:16px;"><legend style="font-weight:bold;">List Fields</legend>';
+                    echo '<div><strong>Fields:</strong></div>';
+                    if (!empty($list_info['fields']) && is_array($list_info['fields'])) {
+                        echo '<ul>';
+                        foreach ($list_info['fields'] as $field) {
+                            $label = isset($field['label']) ? esc_html($field['label']) : '';
+                            $tag = isset($field['tag']) ? esc_html($field['tag']) : '';
+                            $type = isset($field['type']) ? esc_html($field['type']) : '';
+                            echo "<li><strong>$label</strong> ($tag) [$type]</li>";
+                        }
+                        echo '</ul>';
+                    } else {
+                        echo '<em>No fields found.</em>';
+                    }
+                    // Add custom field form
+                    ?>
+                    <form method="post" style="margin-top:12px;">
+                        <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
+                        <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
+                        <label>Type
+                            <select name="field_type" required>
+                                <option value="text">Text</option>
+                                <option value="number">Number</option>
+                                <option value="datetime">Datetime</option>
+                            </select>
+                        </label>
+                        <label>Label
+                            <input type="text" name="field_label" required />
+                        </label>
+                        <label>Tag
+                            <input type="text" name="field_tag" required />
+                        </label>
+                        <label>Default Value
+                            <input type="text" name="field_default_value" />
+                        </label>
+                        <input type="submit" name="df_wc_sendmailsio_add_field" class="button" value="Add Field" />
+                    </form>
+                    <?php
+                    echo '</fieldset>';
+                }
+            }
+        }
+    }
+
     // Handle create new list and assign
     if (!empty($_POST['df_wc_sendmailsio_create_list']) && !empty($_POST['product_id'])) {
         $product_id = intval($_POST['product_id']);
@@ -176,6 +260,55 @@ function df_wc_sendmailsio_product_mapping_page() {
                     if ($new_uid) {
                         update_post_meta($product_id, '_sendmailsio_list_uid', $new_uid);
                         echo '<div class="notice notice-success"><p>New list created and assigned to product.</p></div>';
+
+                        // Fetch list info and display List Fields section
+                        $list_api_url = trailingslashit($api_endpoint) . 'lists/' . urlencode($new_uid);
+                        $list_api_url = add_query_arg('api_token', $api_key, $list_api_url);
+                        $list_response = wp_remote_get($list_api_url, array('headers' => array('Accept' => 'application/json'), 'timeout' => 15));
+                        if (!is_wp_error($list_response) && wp_remote_retrieve_response_code($list_response) === 200) {
+                            $list_info = json_decode(wp_remote_retrieve_body($list_response), true);
+                            if (is_array($list_info)) {
+                                echo '<fieldset style="border:1px solid #ccc;padding:8px;margin-top:16px;"><legend style="font-weight:bold;">List Fields</legend>';
+                                echo '<div><strong>Default Fields:</strong></div>';
+                                if (!empty($list_info['fields']) && is_array($list_info['fields'])) {
+                                    echo '<ul>';
+                                    foreach ($list_info['fields'] as $field) {
+                                        $label = isset($field['label']) ? esc_html($field['label']) : '';
+                                        $tag = isset($field['tag']) ? esc_html($field['tag']) : '';
+                                        $type = isset($field['type']) ? esc_html($field['type']) : '';
+                                        echo "<li><strong>$label</strong> ($tag) [$type]</li>";
+                                    }
+                                    echo '</ul>';
+                                } else {
+                                    echo '<em>No fields found.</em>';
+                                }
+                                // Add custom field form
+                                ?>
+                                <form method="post" style="margin-top:12px;">
+                                    <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
+                                    <input type="hidden" name="list_uid" value="<?php echo esc_attr($new_uid); ?>" />
+                                    <label>Type
+                                        <select name="field_type" required>
+                                            <option value="text">Text</option>
+                                            <option value="number">Number</option>
+                                            <option value="datetime">Datetime</option>
+                                        </select>
+                                    </label>
+                                    <label>Label
+                                        <input type="text" name="field_label" required />
+                                    </label>
+                                    <label>Tag
+                                        <input type="text" name="field_tag" required />
+                                    </label>
+                                    <label>Default Value
+                                        <input type="text" name="field_default_value" />
+                                    </label>
+                                    <input type="submit" name="df_wc_sendmailsio_add_field" class="button" value="Add Field" />
+                                </form>
+                                <?php
+                                echo '</fieldset>';
+                            }
+                        }
                     } else {
                         $msg = isset($data['message']) ? $data['message'] : $body;
                         echo '<div class="notice notice-error"><p>Failed to create list: ' . esc_html($msg) . '</p></div>';
@@ -260,24 +393,54 @@ function df_wc_sendmailsio_product_mapping_page() {
                                         <form method="post" style="margin-top:8px;">
                                             <?php wp_nonce_field('df_wc_sendmailsio_create_list_' . $product_id, 'df_wc_sendmailsio_create_list_nonce_' . $product_id); ?>
                                             <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
-                                            <input type="text" name="new_list_name" placeholder="List Name" required style="width:120px;" />
-                                            <input type="email" name="from_email" placeholder="From Email" required style="width:120px;" />
-                                            <input type="text" name="from_name" placeholder="From Name" required style="width:120px;" />
-                                            <input type="text" name="company" placeholder="Company" style="width:120px;" />
-                                            <input type="text" name="contact_email" placeholder="Contact Email" style="width:120px;" />
-                                            <input type="text" name="country_id" placeholder="Country ID" style="width:80px;" />
-                                            <input type="text" name="city" placeholder="City" style="width:100px;" />
-                                            <input type="text" name="state" placeholder="State" style="width:100px;" />
-                                            <input type="text" name="address_1" placeholder="Address 1" style="width:120px;" />
-                                            <input type="text" name="address_2" placeholder="Address 2" style="width:120px;" />
-                                            <input type="text" name="zip" placeholder="Zip" style="width:80px;" />
-                                            <input type="text" name="phone" placeholder="Phone" style="width:100px;" />
-                                            <input type="url" name="url" placeholder="Website" style="width:120px;" />
+                                            <fieldset style="border:1px solid #ccc;padding:8px;margin-bottom:8px;">
+                                                <legend style="font-weight:bold;">List Setup</legend>
+                                                <label>List Name*<br>
+                                                    <input type="text" name="new_list_name" placeholder="List Name" required style="width:120px;" value="<?php echo esc_attr($product->get_name()); ?>" />
+                                                </label><br>
+                                                <label>From Email*<br>
+                                                    <input type="email" name="from_email" placeholder="From Email" required style="width:120px;" />
+                                                </label><br>
+                                                <label>From Name*<br>
+                                                    <input type="text" name="from_name" placeholder="From Name" required style="width:120px;" />
+                                                </label><br>
+                                                <label>Company<br>
+                                                    <input type="text" name="company" placeholder="Company" style="width:120px;" />
+                                                </label><br>
+                                                <label>Contact Email<br>
+                                                    <input type="text" name="contact_email" placeholder="Contact Email" style="width:120px;" />
+                                                </label><br>
+                                                <label>Country ID<br>
+                                                    <input type="text" name="country_id" placeholder="Country ID" style="width:80px;" />
+                                                </label><br>
+                                                <label>City<br>
+                                                    <input type="text" name="city" placeholder="City" style="width:100px;" />
+                                                </label><br>
+                                                <label>State<br>
+                                                    <input type="text" name="state" placeholder="State" style="width:100px;" />
+                                                </label><br>
+                                                <label>Address 1<br>
+                                                    <input type="text" name="address_1" placeholder="Address 1" style="width:120px;" />
+                                                </label><br>
+                                                <label>Address 2<br>
+                                                    <input type="text" name="address_2" placeholder="Address 2" style="width:120px;" />
+                                                </label><br>
+                                                <label>Zip<br>
+                                                    <input type="text" name="zip" placeholder="Zip" style="width:80px;" />
+                                                </label><br>
+                                                <label>Phone<br>
+                                                    <input type="text" name="phone" placeholder="Phone" style="width:100px;" />
+                                                </label><br>
+                                                <label>Website<br>
+                                                    <input type="url" name="url" placeholder="Website" style="width:120px;" />
+                                                </label>
+                                            </fieldset>
                                             <input type="hidden" name="subscribe_confirmation" value="1" />
                                             <input type="hidden" name="send_welcome_email" value="1" />
                                             <input type="hidden" name="unsubscribe_notification" value="1" />
-                                            <input type="submit" name="df_wc_sendmailsio_create_list" class="button" value="Create & Assign" />
+                                            <input type="submit" name="df_wc_sendmailsio_create_list" class="button" value="Create List" />
                                         </form>
+                                        <!-- List Fields section will be rendered after list creation -->
                                     </details>
                                 <?php else: ?>
                                     <em>Cannot load lists</em>
