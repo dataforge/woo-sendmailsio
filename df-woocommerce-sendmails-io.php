@@ -580,19 +580,12 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         $sample_customer = null;
                                                     }
                                                     ?>
-                                                    <form method="post" style="display:inline;">
-                                                        <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
-                                                        <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
-                                                        <input type="hidden" name="sample_customer_index" value="<?php echo max(0, $sample_customer_index - 1); ?>" />
-                                                        <button type="submit" name="df_wc_sendmailsio_sample_prev" class="button" <?php if ($sample_customer_index <= 0) echo 'disabled'; ?>>Previous</button>
-                                                    </form>
-                                                    <span style="margin:0 8px;">Sample Customer <?php echo $sample_customer_count > 0 ? ($sample_customer_index + 1) . ' of ' . $sample_customer_count : 'N/A'; ?></span>
-                                                    <form method="post" style="display:inline;">
-                                                        <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
-                                                        <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
-                                                        <input type="hidden" name="sample_customer_index" value="<?php echo min($sample_customer_count - 1, $sample_customer_index + 1); ?>" />
-                                                        <button type="submit" name="df_wc_sendmailsio_sample_next" class="button" <?php if ($sample_customer_index >= $sample_customer_count - 1) echo 'disabled'; ?>>Next</button>
-                                                    </form>
+                                                    <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                                                        <button type="submit" name="df_wc_sendmailsio_sample_prev" class="button" style="min-width:70px;" <?php if ($sample_customer_index <= 0) echo 'disabled'; ?>>Previous</button>
+                                                        <span>Sample Customer <?php echo $sample_customer_count > 0 ? ($sample_customer_index + 1) . ' of ' . $sample_customer_count : 'N/A'; ?></span>
+                                                        <button type="submit" name="df_wc_sendmailsio_sample_next" class="button" style="min-width:70px;" <?php if ($sample_customer_index >= $sample_customer_count - 1) echo 'disabled'; ?>>Next</button>
+                                                        <input type="hidden" name="sample_customer_index" value="<?php echo esc_attr($sample_customer_index); ?>" />
+                                                    </div>
                                                     <table style="width:100%;margin-top:8px;">
                                                         <tr>
                                                             <th style="text-align:left;">Select</th>
