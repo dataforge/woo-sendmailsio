@@ -563,9 +563,10 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                 }
                                                 // Add WooCommerce fields form
                                                 ?>
-                                                <form method="post" style="margin-bottom:18px; border:1px solid #ccc; padding:10px; background:#f9f9f9;">
+                                                <form method="post" style="margin-bottom:18px; border:1px solid #ccc; padding:10px; background:#f9f9f9;" id="df-wc-sendmailsio-sample-form">
                                                     <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
                                                     <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
+                                                    <input type="hidden" name="df_wc_sendmailsio_show_fields" value="1" /> <!-- Ensure the "Manage List Fields" section remains open -->
                                                     <strong>Add Fields from WooCommerce Customer Data</strong>
                                                     <?php
                                                     // Fetch WooCommerce customers for sample data
@@ -646,19 +647,22 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                     }
                                                     ?>
                                                     <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px;">
-                                                        <button type="submit" name="df_wc_sendmailsio_sample_prev" class="button" style="min-width:70px;" <?php if ($sample_customer_index <= 0) echo 'disabled'; ?>>Previous</button>
-                                                        <span>Sample Customer <?php echo $sample_customer_count > 0 ? ($sample_customer_index + 1) . ' of ' . $sample_customer_count : 'N/A'; ?></span>
-                                                        <button type="submit" name="df_wc_sendmailsio_sample_next" class="button" style="min-width:70px;" <?php if ($sample_customer_index >= $sample_customer_count - 1) echo 'disabled'; ?>>Next</button>
-                                                        <input type="hidden" name="sample_customer_index" value="<?php echo esc_attr($sample_customer_index); ?>" />
+                                                        <button type="button" id="df-wc-sendmailsio-sample-prev" class="button" style="min-width:70px;" <?php if ($sample_customer_index <= 0) echo 'disabled'; ?>>Previous</button>
+                                                        <span id="df-wc-sendmailsio-sample-count">Sample Customer <?php echo $sample_customer_count > 0 ? ($sample_customer_index + 1) . ' of ' . $sample_customer_count : 'N/A'; ?></span>
+                                                        <button type="button" id="df-wc-sendmailsio-sample-next" class="button" style="min-width:70px;" <?php if ($sample_customer_index >= $sample_customer_count - 1) echo 'disabled'; ?>>Next</button>
+                                                        <input type="hidden" name="sample_customer_index" id="df-wc-sendmailsio-current-sample-index" value="<?php echo esc_attr($sample_customer_index); ?>" />
                                                     </div>
                                                     <table style="width:100%;margin-top:8px;">
-                                                        <tr>
-                                                            <th style="text-align:left;">Select</th>
-                                                            <th style="text-align:left;">Field</th>
-                                                            <th>Required</th>
-                                                            <th>Visible</th>
-                                                            <th>Sample Data</th>
-                                                        </tr>
+                                                        <thead>
+                                                            <tr>
+                                                                <th style="text-align:left;">Select</th>
+                                                                <th style="text-align:left;">Field</th>
+                                                                <th>Required</th>
+                                                                <th>Visible</th>
+                                                                <th>Sample Data</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="df-wc-sendmailsio-sample-table-body">
                                                         <?php foreach ($wc_fields as $key => $f): 
                                                             $is_core = in_array($key, array('billing_email', 'billing_first_name', 'billing_last_name'));
                                                             $sample_value = '';
@@ -712,53 +716,9 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                             </td>
                                                         </tr>
                                                         <?php endforeach; ?>
+                                                        </tbody>
                                                     </table>
                                                     <input type="submit" name="df_wc_sendmailsio_add_wc_fields" class="button" value="Add Selected Fields" style="margin-top:8px;" />
-                                                </form>
-                                                <?php
-                                                // Add custom field form
-                                                ?>
-                                                <form method="post" style="margin-top:12px;" id="df-wc-sendmailsio-add-field-form">
-                                                    <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
-                                                    <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
-                                                    <label>Type
-                                                        <select name="field_type" id="df-wc-sendmailsio-field-type" required onchange="dfWcSendmailsioToggleOptions(this.value)">
-                                                            <option value="EMAIL">Email</option>
-                                                            <option value="FIRST_NAME">First Name</option>
-                                                            <option value="LAST_NAME">Last Name</option>
-                                                            <option value="TEXT">Text</option>
-                                                            <option value="NUMBER">Number</option>
-                                                            <option value="DROPDOWN">Dropdown</option>
-                                                            <option value="MULTISELECT">Multiselect</option>
-                                                            <option value="CHECKBOX">Checkbox</option>
-                                                            <option value="RADIO">Radio</option>
-                                                            <option value="DATE">Date</option>
-                                                            <option value="DATETIME">Datetime</option>
-                                                            <option value="TEXTAREA">Textarea</option>
-                                                            <option value="PHONENUMBER">Phone Number</option>
-                                                        </select>
-                                                    </label>
-                                                    <label>Label
-                                                        <input type="text" name="field_label" required />
-                                                    </label>
-                                                    <label>Tag
-                                                        <input type="text" name="field_tag" required />
-                                                    </label>
-                                                    <label>Default Value
-                                                        <input type="text" name="field_default_value" />
-                                                    </label>
-                                                    <div id="df-wc-sendmailsio-options-row" style="display:none;">
-                                                        <label>Options<br>
-                                                            <textarea name="field_options" rows="2" placeholder="Enter one option per line"></textarea>
-                                                        </label>
-                                                    </div>
-                                                    <label>
-                                                        <input type="checkbox" name="field_required" value="1" /> Required
-                                                    </label>
-                                                    <label>
-                                                        <input type="checkbox" name="field_visible" value="1" checked /> Visible
-                                                    </label>
-                                                    <input type="submit" name="df_wc_sendmailsio_add_field" class="button" value="Add Field" />
                                                 </form>
                                                 <script>
                                                 function dfWcSendmailsioToggleOptions(type) {
@@ -772,6 +732,62 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                 document.addEventListener('DOMContentLoaded', function() {
                                                     var sel = document.getElementById('df-wc-sendmailsio-field-type');
                                                     if (sel) dfWcSendmailsioToggleOptions(sel.value);
+
+                                                    // AJAX for sample customer navigation
+                                                    const sampleForm = document.getElementById('df-wc-sendmailsio-sample-form');
+                                                    const prevButton = document.getElementById('df-wc-sendmailsio-sample-prev');
+                                                    const nextButton = document.getElementById('df-wc-sendmailsio-sample-next');
+                                                    const sampleIndexInput = document.getElementById('df-wc-sendmailsio-current-sample-index');
+                                                    const sampleCountSpan = document.getElementById('df-wc-sendmailsio-sample-count');
+                                                    const sampleTableBody = document.getElementById('df-wc-sendmailsio-sample-table-body');
+
+                                                    if (sampleForm && prevButton && nextButton && sampleIndexInput && sampleCountSpan && sampleTableBody) {
+                                                        const productId = sampleForm.querySelector('input[name="product_id"]').value;
+                                                        const listUid = sampleForm.querySelector('input[name="list_uid"]').value;
+
+                                                        function updateSampleCustomer(newIndex) {
+                                                            const data = new FormData();
+                                                            data.append('action', 'df_wc_sendmailsio_get_sample_customer');
+                                                            data.append('product_id', productId);
+                                                            data.append('list_uid', listUid); // Pass list_uid as well, though not strictly used by AJAX handler for customer data
+                                                            data.append('sample_customer_index', newIndex);
+
+                                                            fetch(ajaxurl, {
+                                                                method: 'POST',
+                                                                body: data
+                                                            })
+                                                            .then(response => response.json())
+                                                            .then(result => {
+                                                                if (result.success) {
+                                                                    const responseData = result.data;
+                                                                    sampleIndexInput.value = responseData.sample_customer_index;
+                                                                    sampleCountSpan.textContent = `Sample Customer ${responseData.sample_customer_index + 1} of ${responseData.sample_customer_count}`;
+                                                                    sampleTableBody.innerHTML = responseData.sample_data_html;
+
+                                                                    // Update button disabled states
+                                                                    prevButton.disabled = (responseData.sample_customer_index <= 0);
+                                                                    nextButton.disabled = (responseData.sample_customer_index >= responseData.sample_customer_count - 1);
+                                                                } else {
+                                                                    console.error('AJAX Error:', result.data);
+                                                                }
+                                                            })
+                                                            .catch(error => {
+                                                                console.error('Fetch Error:', error);
+                                                            });
+                                                        }
+
+                                                        prevButton.addEventListener('click', function(e) {
+                                                            e.preventDefault();
+                                                            let currentIndex = parseInt(sampleIndexInput.value);
+                                                            updateSampleCustomer(currentIndex - 1);
+                                                        });
+
+                                                        nextButton.addEventListener('click', function(e) {
+                                                            e.preventDefault();
+                                                            let currentIndex = parseInt(sampleIndexInput.value);
+                                                            updateSampleCustomer(currentIndex + 1);
+                                                        });
+                                                    }
                                                 });
                                                 </script>
                                                 <?php
@@ -861,4 +877,145 @@ function df_wc_sendmailsio_settings_form() {
         </p>
     </form>
     <?php
+}
+
+
+/**
+ * AJAX handler to get sample customer data
+ */
+add_action('wp_ajax_df_wc_sendmailsio_get_sample_customer', 'df_wc_sendmailsio_ajax_get_sample_customer');
+add_action('wp_ajax_nopriv_df_wc_sendmailsio_get_sample_customer', 'df_wc_sendmailsio_ajax_get_sample_customer'); // For non-logged-in users if needed
+
+function df_wc_sendmailsio_ajax_get_sample_customer() {
+    if (!isset($_POST['product_id']) || !isset($_POST['sample_customer_index'])) {
+        wp_send_json_error('Missing parameters.');
+    }
+
+    $product_id = intval($_POST['product_id']);
+    $sample_customer_index = intval($_POST['sample_customer_index']);
+
+    // Re-fetch the sample customers logic
+    $customer_samples = array();
+    $orders_wc_query = wc_get_orders(array(
+        'limit' => 100,
+        'orderby' => 'date',
+        'order' => 'DESC',
+        'return' => 'objects',
+        'status' => 'any',
+    ));
+
+    $order_ids_wc_query = array();
+    foreach ($orders_wc_query as $order_obj) {
+        $order_ids_wc_query[] = $order_obj->get_id();
+    }
+
+    $debug_ids = array(1029, 1017); // Fallback debug IDs
+    $order_ids_to_use = !empty($order_ids_wc_query) ? $order_ids_wc_query : $debug_ids;
+
+    foreach ($order_ids_to_use as $oid) {
+        $order = wc_get_order($oid);
+        if (!$order) continue;
+        $customer_samples[] = array(
+            'order_id' => $oid,
+            'order' => $order
+        );
+    }
+
+    $sample_customer_count = count($customer_samples);
+
+    if ($sample_customer_count > 0) {
+        // Ensure index stays within bounds
+        if ($sample_customer_index < 0) $sample_customer_index = 0;
+        if ($sample_customer_index >= $sample_customer_count) $sample_customer_index = $sample_customer_count - 1;
+
+        $sample_order = $customer_samples[$sample_customer_index]['order'];
+
+        // Prepare data to send back
+        $response_data = array(
+            'sample_customer_index' => $sample_customer_index,
+            'sample_customer_count' => $sample_customer_count,
+            'sample_data_html' => '', // This will hold the HTML for the table rows
+        );
+
+        // Re-generate the table rows for sample data
+        ob_start(); // Start output buffering
+        $wc_fields = array(
+            'billing_first_name' => array('label' => 'First Name', 'tag' => 'FIRST_NAME', 'type' => 'string'),
+            'billing_last_name' => array('label' => 'Last Name', 'tag' => 'LAST_NAME', 'type' => 'string'),
+            'billing_email' => array('label' => 'Email', 'tag' => 'EMAIL', 'type' => 'string'),
+            'billing_phone' => array('label' => 'Phone Number', 'tag' => 'PHONENUMBER', 'type' => 'string'),
+            'billing_company' => array('label' => 'Company', 'tag' => 'BILLING_COMPANY', 'type' => 'string'),
+            'billing_address_1' => array('label' => 'Address 1', 'tag' => 'BILLING_ADDRESS_1', 'type' => 'string'),
+            'billing_address_2' => array('label' => 'Address 2', 'tag' => 'BILLING_ADDRESS_2', 'type' => 'string'),
+            'billing_city' => array('label' => 'City', 'tag' => 'BILLING_CITY', 'type' => 'string'),
+            'billing_state' => array('label' => 'State', 'tag' => 'BILLING_STATE', 'type' => 'string'),
+            'billing_postcode' => array('label' => 'Postcode', 'tag' => 'BILLING_POSTCODE', 'type' => 'string'),
+            'billing_country' => array('label' => 'Country', 'tag' => 'BILLING_COUNTRY', 'type' => 'string'),
+            'shipping_first_name' => array('label' => 'Shipping First Name', 'tag' => 'SHIPPING_FIRST_NAME', 'type' => 'string'),
+            'shipping_last_name' => array('label' => 'Shipping Last Name', 'tag' => 'SHIPPING_LAST_NAME', 'type' => 'string'),
+            'shipping_company' => array('label' => 'Shipping Company', 'tag' => 'SHIPPING_COMPANY', 'type' => 'string'),
+            'shipping_address_1' => array('label' => 'Shipping Address 1', 'tag' => 'SHIPPING_ADDRESS_1', 'type' => 'string'),
+            'shipping_address_2' => array('label' => 'Shipping Address 2', 'tag' => 'SHIPPING_ADDRESS_2', 'type' => 'string'),
+            'shipping_city' => array('label' => 'Shipping City', 'tag' => 'SHIPPING_CITY', 'type' => 'string'),
+            'shipping_state' => array('label' => 'Shipping State', 'tag' => 'SHIPPING_STATE', 'type' => 'string'),
+            'shipping_postcode' => array('label' => 'Shipping Postcode', 'tag' => 'SHIPPING_POSTCODE', 'type' => 'string'),
+            'shipping_country' => array('label' => 'Shipping Country', 'tag' => 'SHIPPING_COUNTRY', 'type' => 'string'),
+        );
+        foreach ($wc_fields as $key => $f) {
+            $is_core = in_array($key, array('billing_email', 'billing_first_name', 'billing_last_name'));
+            $sample_value = '';
+            // Always use WC_Order getter for all fields
+            switch ($key) {
+                case 'billing_first_name': $sample_value = $sample_order->get_billing_first_name(); break;
+                case 'billing_last_name': $sample_value = $sample_order->get_billing_last_name(); break;
+                case 'billing_email': $sample_value = $sample_order->get_billing_email(); break;
+                case 'billing_phone': $sample_value = $sample_order->get_billing_phone(); break;
+                case 'billing_company': $sample_value = $sample_order->get_billing_company(); break;
+                case 'billing_address_1': $sample_value = $sample_order->get_billing_address_1(); break;
+                case 'billing_address_2': $sample_value = $sample_order->get_billing_address_2(); break;
+                case 'billing_city': $sample_value = $sample_order->get_billing_city(); break;
+                case 'billing_state': $sample_value = $sample_order->get_billing_state(); break;
+                case 'billing_postcode': $sample_value = $sample_order->get_billing_postcode(); break;
+                case 'billing_country': $sample_value = $sample_order->get_billing_country(); break;
+                case 'shipping_first_name': $sample_value = $sample_order->get_shipping_first_name(); break;
+                case 'shipping_last_name': $sample_value = $sample_order->get_shipping_last_name(); break;
+                case 'shipping_company': $sample_value = $sample_order->get_shipping_company(); break;
+                case 'shipping_address_1': $sample_value = $sample_order->get_shipping_address_1(); break;
+                case 'shipping_address_2': $sample_value = $sample_order->get_shipping_address_2(); break;
+                case 'shipping_city': $sample_value = $sample_order->get_shipping_city(); break;
+                case 'shipping_state': $sample_value = $sample_order->get_shipping_state(); break;
+                case 'shipping_postcode': $sample_value = $sample_order->get_shipping_postcode(); break;
+                case 'shipping_country': $sample_value = $sample_order->get_shipping_country(); break;
+            }
+            ?>
+            <tr>
+                <td>
+                    <input type="checkbox" name="wc_fields[]" value="<?php echo esc_attr($key); ?>" id="wc_field_<?php echo esc_attr($key); ?>"
+                    <?php if ($is_core): ?> checked disabled <?php endif; ?> />
+                </td>
+                <td>
+                    <label for="wc_field_<?php echo esc_attr($key); ?>"><?php echo esc_html($f['label']); ?></label>
+                    <?php if ($is_core): ?>
+                        <span style="color:#888;font-size:11px;">(Required by Sendmails.io, mapped to WooCommerce)</span>
+                    <?php endif; ?>
+                </td>
+                <td style="text-align:center;">
+                    <input type="checkbox" name="wc_field_required[<?php echo esc_attr($key); ?>]" value="1"
+                    <?php if ($is_core): ?> checked disabled <?php endif; ?> />
+                </td>
+                <td style="text-align:center;">
+                    <input type="checkbox" name="wc_field_visible[<?php echo esc_attr($key); ?>]" value="1"
+                    <?php if ($is_core): ?> checked disabled <?php else: ?> checked <?php endif; ?> />
+                </td>
+                <td style="text-align:center;">
+                    <?php echo $sample_value !== '' ? esc_html($sample_value) : '<span style="color:#aaa;">(empty)</span>'; ?>
+                </td>
+            </tr>
+            <?php
+        }
+        $response_data['sample_data_html'] = ob_get_clean(); // Get buffered output and clean
+        wp_send_json_success($response_data);
+    } else {
+        wp_send_json_error('No sample customers found.');
+    }
 }
