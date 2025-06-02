@@ -571,62 +571,14 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                     // Fetch WooCommerce customers for sample data
                                                     global $wpdb;
                                                     $customer_samples = array();
-                                                    // Registered users with orders
-                                                    $order_customer_ids = $wpdb->get_col("SELECT DISTINCT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_customer_user' AND meta_value > 0");
-                                                    if (!empty($order_customer_ids)) {
-                                                        $users = get_users(array(
-                                                            'include' => $order_customer_ids,
-                                                            'orderby' => 'ID',
-                                                            'order' => 'ASC',
-                                                            'fields' => array('ID')
-                                                        ));
-                                                        foreach ($users as $u) {
-                                                            $customer = new WC_Customer($u->ID);
-                                                            $customer_samples[] = array(
-                                                                'type' => 'user',
-                                                                'id' => $u->ID,
-                                                                'customer' => $customer
-                                                            );
-                                                        }
-                                                    }
-                                                    // Guest customers (orders with _customer_user = 0)
-                                                    $guest_orders = $wpdb->get_results("SELECT ID FROM {$wpdb->posts} WHERE post_type = 'shop_order' AND post_status IN ('wc-completed','wc-processing','wc-on-hold','wc-refunded','wc-pending')");
-                                                    $guest_emails = array();
-                                                    foreach ($guest_orders as $order_post) {
-                                                        $order = wc_get_order($order_post->ID);
+                                                    // Get the most recent 10 WooCommerce orders (all, including guests and users)
+                                                    $order_ids = $wpdb->get_col("SELECT ID FROM {$wpdb->posts} WHERE post_type = 'shop_order' AND post_status IN ('wc-completed','wc-processing','wc-on-hold','wc-refunded','wc-pending') ORDER BY ID DESC LIMIT 10");
+                                                    foreach ($order_ids as $oid) {
+                                                        $order = wc_get_order($oid);
                                                         if (!$order) continue;
-                                                        $user_id = $order->get_customer_id();
-                                                        if ($user_id > 0) continue; // skip registered users
-                                                        $email = $order->get_billing_email();
-                                                        if (!$email || isset($guest_emails[$email])) continue; // skip duplicates
-                                                        $guest_emails[$email] = true;
                                                         $customer_samples[] = array(
-                                                            'type' => 'guest',
-                                                            'order_id' => $order->get_id(),
+                                                            'order_id' => $oid,
                                                             'order' => $order
-                                                        );
-                                                    }
-                                                    // Always include users with 'customer' or 'subscriber' role (union, not fallback)
-                                                    $users = get_users(array(
-                                                        'role__in' => array('customer', 'subscriber'),
-                                                        'number' => 100,
-                                                        'fields' => array('ID')
-                                                    ));
-                                                    foreach ($users as $u) {
-                                                        // Avoid duplicates
-                                                        $already = false;
-                                                        foreach ($customer_samples as $sample) {
-                                                            if ($sample['type'] === 'user' && $sample['id'] == $u->ID) {
-                                                                $already = true;
-                                                                break;
-                                                            }
-                                                        }
-                                                        if ($already) continue;
-                                                        $customer = new WC_Customer($u->ID);
-                                                        $customer_samples[] = array(
-                                                            'type' => 'user',
-                                                            'id' => $u->ID,
-                                                            'customer' => $customer
                                                         );
                                                     }
                                                     $sample_customer_index = isset($_POST['sample_customer_index']) ? intval($_POST['sample_customer_index']) : 0;
@@ -635,13 +587,8 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         if ($sample_customer_index < 0) $sample_customer_index = 0;
                                                         if ($sample_customer_index >= $sample_customer_count) $sample_customer_index = $sample_customer_count - 1;
                                                         $sample = $customer_samples[$sample_customer_index];
-                                                        if ($sample['type'] === 'user') {
-                                                            $sample_customer = $sample['customer'];
-                                                            $sample_order = null;
-                                                        } else {
-                                                            $sample_customer = null;
-                                                            $sample_order = $sample['order'];
-                                                        }
+                                                        $sample_order = $sample['order'];
+                                                        $sample_customer = null; // not used in this mode
                                                     } else {
                                                         $sample_customer = null;
                                                         $sample_order = null;
