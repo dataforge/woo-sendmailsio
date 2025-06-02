@@ -87,6 +87,7 @@ function df_wc_sendmailsio_get_all_lists() {
  * Product List Mapping Page
  */
 function df_wc_sendmailsio_product_mapping_page() {
+    global $wpdb;
     // Handle mapping save
     if (!empty($_POST['df_wc_sendmailsio_save_mapping']) && !empty($_POST['product_id'])) {
         $product_id = intval($_POST['product_id']);
@@ -568,6 +569,7 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                     <strong>Add Fields from WooCommerce Customer Data</strong>
                                                     <?php
                                                     // Fetch WooCommerce customers for sample data
+                                                    global $wpdb;
                                                     $customer_samples = array();
                                                     // Registered users with orders
                                                     $order_customer_ids = $wpdb->get_col("SELECT DISTINCT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_customer_user' AND meta_value > 0");
