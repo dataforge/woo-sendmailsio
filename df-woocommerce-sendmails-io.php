@@ -2,7 +2,7 @@
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.04
+Version: 0.05
 Author: radialmonster
 GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
 */
@@ -215,13 +215,6 @@ function df_wc_sendmailsio_product_mapping_page() {
                         'post_status'    => 'publish',
                         'posts_per_page' => 50,
                         'fields'         => 'ids',
-                        'meta_query'     => array(
-                            array(
-                                'key'     => '_visibility',
-                                'value'   => array('hidden', 'search', 'exclude-from-catalog'),
-                                'compare' => 'NOT IN'
-                            )
-                        ),
                     );
                     $products = get_posts($args);
                     foreach ($products as $product_id) {
