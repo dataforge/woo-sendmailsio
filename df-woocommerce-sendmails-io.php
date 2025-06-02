@@ -2,7 +2,7 @@
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.05
+Version: 0.06
 Author: radialmonster
 GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
 */
@@ -117,35 +117,35 @@ function df_wc_sendmailsio_product_mapping_page() {
                 'send_welcome_email' => 1,
                 'unsubscribe_notification' => 1,
             );
-            // Optional fields
-            if (!empty($_POST['include_company'])) {
+            // Optional fields: only include if not empty
+            if (!empty($_POST['company'])) {
                 $fields['contact[company]'] = sanitize_text_field($_POST['company']);
             }
-            if (!empty($_POST['include_contact_email'])) {
+            if (!empty($_POST['contact_email'])) {
                 $fields['contact[email]'] = sanitize_email($_POST['contact_email']);
             }
-            if (!empty($_POST['include_country_id'])) {
+            if (!empty($_POST['country_id'])) {
                 $fields['contact[country_id]'] = sanitize_text_field($_POST['country_id']);
             }
-            if (!empty($_POST['include_city'])) {
+            if (!empty($_POST['city'])) {
                 $fields['contact[city]'] = sanitize_text_field($_POST['city']);
             }
-            if (!empty($_POST['include_state'])) {
+            if (!empty($_POST['state'])) {
                 $fields['contact[state]'] = sanitize_text_field($_POST['state']);
             }
-            if (!empty($_POST['include_address_1'])) {
+            if (!empty($_POST['address_1'])) {
                 $fields['contact[address_1]'] = sanitize_text_field($_POST['address_1']);
             }
-            if (!empty($_POST['include_address_2'])) {
+            if (!empty($_POST['address_2'])) {
                 $fields['contact[address_2]'] = sanitize_text_field($_POST['address_2']);
             }
-            if (!empty($_POST['include_zip'])) {
+            if (!empty($_POST['zip'])) {
                 $fields['contact[zip]'] = sanitize_text_field($_POST['zip']);
             }
-            if (!empty($_POST['include_phone'])) {
+            if (!empty($_POST['phone'])) {
                 $fields['contact[phone]'] = sanitize_text_field($_POST['phone']);
             }
-            if (!empty($_POST['include_url'])) {
+            if (!empty($_POST['url'])) {
                 $fields['contact[url]'] = esc_url_raw($_POST['url']);
             }
             $api_key = get_option('df_wc_sendmailsio_api_key', '');
@@ -263,25 +263,15 @@ function df_wc_sendmailsio_product_mapping_page() {
                                             <input type="text" name="new_list_name" placeholder="List Name" required style="width:120px;" />
                                             <input type="email" name="from_email" placeholder="From Email" required style="width:120px;" />
                                             <input type="text" name="from_name" placeholder="From Name" required style="width:120px;" />
-                                            <label><input type="checkbox" name="include_company" /> Company</label>
                                             <input type="text" name="company" placeholder="Company" style="width:120px;" />
-                                            <label><input type="checkbox" name="include_contact_email" /> Contact Email</label>
                                             <input type="text" name="contact_email" placeholder="Contact Email" style="width:120px;" />
-                                            <label><input type="checkbox" name="include_country_id" /> Country ID</label>
                                             <input type="text" name="country_id" placeholder="Country ID" style="width:80px;" />
-                                            <label><input type="checkbox" name="include_city" /> City</label>
                                             <input type="text" name="city" placeholder="City" style="width:100px;" />
-                                            <label><input type="checkbox" name="include_state" /> State</label>
                                             <input type="text" name="state" placeholder="State" style="width:100px;" />
-                                            <label><input type="checkbox" name="include_address_1" /> Address 1</label>
                                             <input type="text" name="address_1" placeholder="Address 1" style="width:120px;" />
-                                            <label><input type="checkbox" name="include_address_2" /> Address 2</label>
                                             <input type="text" name="address_2" placeholder="Address 2" style="width:120px;" />
-                                            <label><input type="checkbox" name="include_zip" /> Zip</label>
                                             <input type="text" name="zip" placeholder="Zip" style="width:80px;" />
-                                            <label><input type="checkbox" name="include_phone" /> Phone</label>
                                             <input type="text" name="phone" placeholder="Phone" style="width:100px;" />
-                                            <label><input type="checkbox" name="include_url" /> Website</label>
                                             <input type="url" name="url" placeholder="Website" style="width:120px;" />
                                             <input type="hidden" name="subscribe_confirmation" value="1" />
                                             <input type="hidden" name="send_welcome_email" value="1" />
