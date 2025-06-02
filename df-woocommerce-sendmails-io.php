@@ -2,7 +2,7 @@
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.13
+Version: 0.14
 Author: radialmonster
 GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
 */
@@ -568,16 +568,74 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                     <strong>Add Fields from WooCommerce Customer Data</strong>
                                                     <?php
                                                     // Fetch WooCommerce customers for sample data
-                                                    $customer_users = get_users(array('role' => 'customer', 'number' => 100, 'fields' => array('ID')));
+                                                    $customer_samples = array();
+                                                    // Registered users with orders
+                                                    $order_customer_ids = $wpdb->get_col("SELECT DISTINCT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_customer_user' AND meta_value > 0");
+                                                    if (!empty($order_customer_ids)) {
+                                                        $users = get_users(array(
+                                                            'include' => $order_customer_ids,
+                                                            'orderby' => 'ID',
+                                                            'order' => 'ASC',
+                                                            'fields' => array('ID')
+                                                        ));
+                                                        foreach ($users as $u) {
+                                                            $customer = new WC_Customer($u->ID);
+                                                            $customer_samples[] = array(
+                                                                'type' => 'user',
+                                                                'id' => $u->ID,
+                                                                'customer' => $customer
+                                                            );
+                                                        }
+                                                    }
+                                                    // Guest customers (orders with _customer_user = 0)
+                                                    $guest_orders = $wpdb->get_results("SELECT ID FROM {$wpdb->posts} WHERE post_type = 'shop_order' AND post_status IN ('wc-completed','wc-processing','wc-on-hold','wc-refunded','wc-pending')");
+                                                    $guest_emails = array();
+                                                    foreach ($guest_orders as $order_post) {
+                                                        $order = wc_get_order($order_post->ID);
+                                                        if (!$order) continue;
+                                                        $user_id = $order->get_customer_id();
+                                                        if ($user_id > 0) continue; // skip registered users
+                                                        $email = $order->get_billing_email();
+                                                        if (!$email || isset($guest_emails[$email])) continue; // skip duplicates
+                                                        $guest_emails[$email] = true;
+                                                        $customer_samples[] = array(
+                                                            'type' => 'guest',
+                                                            'order_id' => $order->get_id(),
+                                                            'order' => $order
+                                                        );
+                                                    }
+                                                    // Fallback: get users with 'customer' or 'subscriber' role if no orders found
+                                                    if (empty($customer_samples)) {
+                                                        $users = get_users(array(
+                                                            'role__in' => array('customer', 'subscriber'),
+                                                            'number' => 100,
+                                                            'fields' => array('ID')
+                                                        ));
+                                                        foreach ($users as $u) {
+                                                            $customer = new WC_Customer($u->ID);
+                                                            $customer_samples[] = array(
+                                                                'type' => 'user',
+                                                                'id' => $u->ID,
+                                                                'customer' => $customer
+                                                            );
+                                                        }
+                                                    }
                                                     $sample_customer_index = isset($_POST['sample_customer_index']) ? intval($_POST['sample_customer_index']) : 0;
-                                                    $sample_customer_count = count($customer_users);
+                                                    $sample_customer_count = count($customer_samples);
                                                     if ($sample_customer_count > 0) {
                                                         if ($sample_customer_index < 0) $sample_customer_index = 0;
                                                         if ($sample_customer_index >= $sample_customer_count) $sample_customer_index = $sample_customer_count - 1;
-                                                        $sample_customer_id = $customer_users[$sample_customer_index]->ID;
-                                                        $sample_customer = new WC_Customer($sample_customer_id);
+                                                        $sample = $customer_samples[$sample_customer_index];
+                                                        if ($sample['type'] === 'user') {
+                                                            $sample_customer = $sample['customer'];
+                                                            $sample_order = null;
+                                                        } else {
+                                                            $sample_customer = null;
+                                                            $sample_order = $sample['order'];
+                                                        }
                                                     } else {
                                                         $sample_customer = null;
+                                                        $sample_order = null;
                                                     }
                                                     ?>
                                                     <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px;">
