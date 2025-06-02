@@ -111,7 +111,6 @@ function df_wc_sendmailsio_handle_save_mapping() {
             }
         } else {
             echo '<div class="notice notice-error"><p>Security check failed. Please try again.</p></div>';
-        }
     }
 }
 
