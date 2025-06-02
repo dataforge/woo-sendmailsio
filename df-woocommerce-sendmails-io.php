@@ -121,6 +121,19 @@ function df_wc_sendmailsio_product_mapping_page() {
             if (!empty($_POST['field_default_value'])) {
                 $field_data['default_value'] = sanitize_text_field($_POST['field_default_value']);
             }
+            // Handle options for dropdown, multiselect, radio
+            $type_upper = strtoupper(sanitize_text_field($_POST['field_type']));
+            if (in_array($type_upper, array('DROPDOWN', 'MULTISELECT', 'RADIO')) && !empty($_POST['field_options'])) {
+                // Send as comma-separated or array, depending on API
+                $options_raw = trim($_POST['field_options']);
+                $options = array_filter(array_map('trim', preg_split('/\r\n|\r|\n|,/', $options_raw)));
+                if (!empty($options)) {
+                    $field_data['options'] = $options;
+                }
+            }
+            // Required and visible flags
+            $field_data['required'] = !empty($_POST['field_required']) ? 1 : 0;
+            $field_data['visible'] = isset($_POST['field_visible']) ? 1 : 0;
             $add_field_response = wp_remote_post($add_field_url, array(
                 'headers' => array('Accept' => 'application/json'),
                 'body' => $field_data,
@@ -152,7 +165,18 @@ function df_wc_sendmailsio_product_mapping_page() {
                             $label = isset($field['label']) ? esc_html($field['label']) : '';
                             $tag = isset($field['tag']) ? esc_html($field['tag']) : '';
                             $type = isset($field['type']) ? esc_html($field['type']) : '';
-                            echo "<li><strong>$label</strong> ($tag) [$type]</li>";
+                            $default = isset($field['default_value']) ? esc_html($field['default_value']) : '';
+                            $required = isset($field['required']) && $field['required'] ? 'Yes' : 'No';
+                            $visible = isset($field['visible']) && $field['visible'] ? 'Yes' : 'No';
+                            $options = '';
+                            if (isset($field['options']) && is_array($field['options'])) {
+                                $options = 'Options: ' . esc_html(implode(', ', $field['options']));
+                            }
+                            echo "<li><strong>$label</strong> ($tag) [$type]";
+                            if ($default !== '') echo " | Default: $default";
+                            echo " | Required: $required | Visible: $visible";
+                            if ($options) echo " | $options";
+                            echo "</li>";
                         }
                         echo '</ul>';
                     } else {
@@ -466,21 +490,24 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                 }
                                                 // Add custom field form
                                                 ?>
-                                                <form method="post" style="margin-top:12px;">
+                                                <form method="post" style="margin-top:12px;" id="df-wc-sendmailsio-add-field-form">
                                                     <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
                                                     <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
                                                     <label>Type
-                                                        <select name="field_type" required>
-                                                            <option value="text">Text</option>
-                                                            <option value="number">Number</option>
-                                                            <option value="dropdown">Dropdown</option>
-                                                            <option value="multiselect">Multiselect</option>
-                                                            <option value="checkbox">Checkbox</option>
-                                                            <option value="radio">Radio</option>
-                                                            <option value="date">Date</option>
-                                                            <option value="datetime">Datetime</option>
-                                                            <option value="textarea">Textarea</option>
-                                                            <option value="phone">Phone Number</option>
+                                                        <select name="field_type" id="df-wc-sendmailsio-field-type" required onchange="dfWcSendmailsioToggleOptions(this.value)">
+                                                            <option value="EMAIL">Email</option>
+                                                            <option value="FIRST_NAME">First Name</option>
+                                                            <option value="LAST_NAME">Last Name</option>
+                                                            <option value="TEXT">Text</option>
+                                                            <option value="NUMBER">Number</option>
+                                                            <option value="DROPDOWN">Dropdown</option>
+                                                            <option value="MULTISELECT">Multiselect</option>
+                                                            <option value="CHECKBOX">Checkbox</option>
+                                                            <option value="RADIO">Radio</option>
+                                                            <option value="DATE">Date</option>
+                                                            <option value="DATETIME">Datetime</option>
+                                                            <option value="TEXTAREA">Textarea</option>
+                                                            <option value="PHONENUMBER">Phone Number</option>
                                                         </select>
                                                     </label>
                                                     <label>Label
@@ -492,8 +519,33 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                     <label>Default Value
                                                         <input type="text" name="field_default_value" />
                                                     </label>
+                                                    <div id="df-wc-sendmailsio-options-row" style="display:none;">
+                                                        <label>Options<br>
+                                                            <textarea name="field_options" rows="2" placeholder="Enter one option per line"></textarea>
+                                                        </label>
+                                                    </div>
+                                                    <label>
+                                                        <input type="checkbox" name="field_required" value="1" /> Required
+                                                    </label>
+                                                    <label>
+                                                        <input type="checkbox" name="field_visible" value="1" checked /> Visible
+                                                    </label>
                                                     <input type="submit" name="df_wc_sendmailsio_add_field" class="button" value="Add Field" />
                                                 </form>
+                                                <script>
+                                                function dfWcSendmailsioToggleOptions(type) {
+                                                    var optRow = document.getElementById('df-wc-sendmailsio-options-row');
+                                                    if (['DROPDOWN','MULTISELECT','RADIO'].indexOf(type) !== -1) {
+                                                        optRow.style.display = '';
+                                                    } else {
+                                                        optRow.style.display = 'none';
+                                                    }
+                                                }
+                                                document.addEventListener('DOMContentLoaded', function() {
+                                                    var sel = document.getElementById('df-wc-sendmailsio-field-type');
+                                                    if (sel) dfWcSendmailsioToggleOptions(sel.value);
+                                                });
+                                                </script>
                                                 <?php
                                                 echo '</fieldset>';
                                             }
