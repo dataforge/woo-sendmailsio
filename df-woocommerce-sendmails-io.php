@@ -89,6 +89,19 @@ function df_wc_sendmailsio_get_all_lists() {
 function df_wc_sendmailsio_product_mapping_page() {
     global $wpdb;
     // Handle mapping save
+    df_wc_sendmailsio_handle_save_mapping();
+
+    // Handle add custom field to list
+    df_wc_sendmailsio_handle_add_field();
+
+    // Handle create new list and assign
+    df_wc_sendmailsio_handle_create_list();
+}
+
+/**
+ * Handle saving the product to list mapping.
+ */
+function df_wc_sendmailsio_handle_save_mapping() {
     if (!empty($_POST['df_wc_sendmailsio_save_mapping']) && !empty($_POST['product_id'])) {
         $product_id = intval($_POST['product_id']);
         if (isset($_POST['df_wc_sendmailsio_nonce_' . $product_id]) && wp_verify_nonce($_POST['df_wc_sendmailsio_nonce_' . $product_id], 'df_wc_sendmailsio_save_mapping_' . $product_id)) {
@@ -104,8 +117,124 @@ function df_wc_sendmailsio_product_mapping_page() {
             echo '<div class="notice notice-error"><p>Security check failed. Please try again.</p></div>';
         }
     }
+}
 
-    // Handle add custom field to list
+/**
+ * Handle creating a new list and assigning it to a product.
+ */
+function df_wc_sendmailsio_handle_create_list() {
+    if (!empty($_POST['df_wc_sendmailsio_create_list']) && !empty($_POST['product_id'])) {
+        $product_id = intval($_POST['product_id']);
+        if (isset($_POST['df_wc_sendmailsio_create_list_nonce_' . $product_id]) && wp_verify_nonce($_POST['df_wc_sendmailsio_create_list_nonce_' . $product_id], 'df_wc_sendmailsio_create_list_' . $product_id)) {
+            // Collect and sanitize fields
+            $fields = array(
+                'name' => sanitize_text_field($_POST['new_list_name']),
+                'from_email' => sanitize_email($_POST['from_email']),
+                'from_name' => sanitize_text_field($_POST['from_name']),
+                'subscribe_confirmation' => 1,
+                'send_welcome_email' => 1,
+                'unsubscribe_notification' => 1,
+            );
+            // Optional fields: only include if not empty
+            if (!empty($_POST['company'])) {
+                $fields['contact[company]'] = sanitize_text_field($_POST['company']);
+            }
+            if (!empty($_POST['contact_email'])) {
+                $fields['contact[email]'] = sanitize_email($_POST['contact_email']);
+            }
+            if (!empty($_POST['country_id'])) {
+                $fields['contact[country_id]'] = sanitize_text_field($_POST['country_id']);
+            }
+            if (!empty($_POST['city'])) {
+                $fields['contact[city]'] = sanitize_text_field($_POST['city']);
+            }
+            if (!empty($_POST['state'])) {
+                $fields['contact[state]'] = sanitize_text_field($_POST['state']);
+            }
+            if (!empty($_POST['address_1'])) {
+                $fields['contact[address_1]'] = sanitize_text_field($_POST['address_1']);
+            }
+            if (!empty($_POST['address_2'])) {
+                $fields['contact[address_2]'] = sanitize_text_field($_POST['address_2']);
+            }
+            if (!empty($_POST['zip'])) {
+                $fields['contact[zip]'] = sanitize_text_field($_POST['zip']);
+            }
+            if (!empty($_POST['phone'])) {
+                $fields['contact[phone]'] = sanitize_text_field($_POST['phone']);
+            }
+            if (!empty($_POST['url'])) {
+                $fields['contact[url]'] = esc_url_raw($_POST['url']);
+            }
+            $api_key = get_option('df_wc_sendmailsio_api_key', '');
+            $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
+            if ($api_key) {
+                $url = trailingslashit($api_endpoint) . 'lists';
+                $url = add_query_arg('api_token', $api_key, $url);
+                $args = array(
+                    'headers' => array('Accept' => 'application/json'),
+                    'body' => $fields,
+                    'timeout' => 20,
+                );
+                $response = wp_remote_post($url, $args);
+                if (is_wp_error($response)) {
+                    echo '<div class="notice notice-error"><p>API error: ' . esc_html($response->get_error_message()) . '</p></div>';
+                } else {
+                    $code = wp_remote_retrieve_response_code($response);
+                    $body = wp_remote_retrieve_body($response);
+                    $data = json_decode($body, true);
+                    $new_uid = null;
+                    if ($code === 200) {
+                        if (isset($data['uid'])) {
+                            $new_uid = $data['uid'];
+                        } elseif (isset($data['data']['uid'])) {
+                            $new_uid = $data['data']['uid'];
+                        }
+                    }
+                    // If UID is not found but message indicates success, treat as success
+                    $success_message = '';
+                    if (!$new_uid && isset($data['message']) && stripos($data['message'], 'success') !== false) {
+                        $success_message = $data['message'];
+                        // Try to find the new list by name
+                        $lists = df_wc_sendmailsio_get_all_lists();
+                        if (is_array($lists)) {
+                            foreach ($lists as $list) {
+                                if (
+                                    (isset($list['name']) && $list['name'] === $_POST['new_list_name']) ||
+                                    (isset($list['list_name']) && $list['list_name'] === $_POST['new_list_name'])
+                                ) {
+                                    $new_uid = isset($list['uid']) ? $list['uid'] : (isset($list['id']) ? $list['id'] : null);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if ($new_uid) {
+                        update_post_meta($product_id, '_sendmailsio_list_uid', $new_uid);
+                        // Redirect to refresh the page and show the new mapping in the Current List column
+                        wp_safe_redirect(add_query_arg(array('page' => 'df-wc-sendmailsio-product-mapping'), admin_url('admin.php')));
+                        exit;
+                    } elseif ($success_message) {
+                        echo '<div class="notice notice-success"><p>' . esc_html($success_message) . '</p></div>';
+                    } else {
+                        $msg = isset($data['message']) ? $data['message'] : $body;
+                        echo '<div class="notice notice-error"><p>Failed to create list: ' . esc_html($msg) . '</p></div>';
+                    }
+                }
+            } else {
+                echo '<div class="notice notice-error"><p>No API key set.</p></div>';
+            }
+        } else {
+            echo '<div class="notice notice-error"><p>Security check failed. Please try again.</p></div>';
+        }
+    }
+}
+}
+
+/**
+ * Handle adding a custom field to a list.
+ */
+function df_wc_sendmailsio_handle_add_field() {
     if (!empty($_POST['df_wc_sendmailsio_add_field']) && !empty($_POST['list_uid']) && !empty($_POST['product_id'])) {
         $list_uid = sanitize_text_field($_POST['list_uid']);
         $product_id = intval($_POST['product_id']);
@@ -122,6 +251,97 @@ function df_wc_sendmailsio_product_mapping_page() {
             if (!empty($_POST['field_default_value'])) {
                 $field_data['default_value'] = sanitize_text_field($_POST['field_default_value']);
             }
+            // Handle options for dropdown, multiselect, radio
+            $type_upper = strtoupper(sanitize_text_field($_POST['field_type']));
+            if (in_array($type_upper, array('DROPDOWN', 'MULTISELECT', 'RADIO')) && !empty($_POST['field_options'])) {
+                $options_raw = trim($_POST['field_options']);
+                $options = array_filter(array_map('trim', preg_split('/\r\n|\r|\n|,/', $options_raw)));
+                if (!empty($options)) {
+                    $field_data['options'] = $options;
+                }
+            }
+            $field_data['required'] = !empty($_POST['field_required']) ? 1 : 0;
+            $field_data['visible'] = isset($_POST['field_visible']) ? 1 : 0;
+            $add_field_response = wp_remote_post($add_field_url, array(
+                'headers' => array('Accept' => 'application/json'),
+                'body' => $field_data,
+                'timeout' => 15,
+            ));
+            if (is_wp_error($add_field_response)) {
+                echo '<div class="notice notice-error"><p>API error: ' . esc_html($add_field_response->get_error_message()) . '</p></div>';
+            } else {
+                $code = wp_remote_retrieve_response_code($add_field_response);
+                $body = wp_remote_retrieve_body($add_field_response);
+                if ($code === 200) {
+                    echo '<div class="notice notice-success"><p>Custom field added successfully.</p></div>';
+                } else {
+                    echo '<div class="notice notice-error"><p>Failed to add field: ' . esc_html($body) . '</p></div>';
+                }
+            }
+            // Fetch and display updated fields
+            $list_api_url = trailingslashit($api_endpoint) . 'lists/' . urlencode($list_uid);
+            $list_api_url = add_query_arg('api_token', $api_key, $list_api_url);
+            $list_response = wp_remote_get($list_api_url, array('headers' => array('Accept' => 'application/json'), 'timeout' => 15));
+            if (!is_wp_error($list_response) && wp_remote_retrieve_response_code($list_response) === 200) {
+                $list_info = json_decode(wp_remote_retrieve_body($list_response), true);
+                if (is_array($list_info)) {
+                    echo '<fieldset style="border:1px solid #ccc;padding:8px;margin-top:16px;"><legend style="font-weight:bold;">List Fields</legend>';
+                    echo '<div><strong>Fields:</strong></div>';
+                    if (!empty($list_info['fields']) && is_array($list_info['fields'])) {
+                        echo '<ul>';
+                        foreach ($list_info['fields'] as $field) {
+                            echo '<li><ul style="margin-bottom:8px;">';
+                            echo '<li><strong>Label:</strong> ' . (isset($field['label']) ? esc_html($field['label']) : '<em>n/a</em>') . '</li>';
+                            echo '<li><strong>Type:</strong> ' . (isset($field['type']) ? esc_html($field['type']) : '<em>n/a</em>') . '</li>';
+                            echo '<li><strong>Tag:</strong> ' . (isset($field['tag']) ? esc_html($field['tag']) : '<em>n/a</em>') . '</li>';
+                            echo '<li><strong>Required:</strong> ' . (isset($field['required']) && $field['required'] ? 'Yes' : 'No') . '</li>';
+                            echo '<li><strong>Visible:</strong> ' . (isset($field['visible']) && $field['visible'] ? 'Yes' : 'No') . '</li>';
+                            if (isset($field['default_value']) && $field['default_value'] !== '') {
+                                echo '<li><strong>Default Value:</strong> ' . esc_html($field['default_value']) . '</li>';
+                            }
+                            if (isset($field['options']) && is_array($field['options']) && count($field['options'])) {
+                                echo '<li><strong>Options:</strong> ' . esc_html(implode(', ', $field['options'])) . '</li>';
+                            }
+                            foreach ($field as $k => $v) {
+                                if (in_array($k, array('label','type','tag','required','visible','default_value','options'))) continue;
+                                if (is_array($v)) $v = json_encode($v);
+                                echo '<li><strong>' . esc_html(ucwords(str_replace('_',' ',$k))) . ':</strong> ' . esc_html($v) . '</li>';
+                            }
+                            echo '</ul></li>';
+                        }
+                        echo '</ul>';
+                    } else {
+                        echo '<em>No fields found.</em>';
+                    }
+                    ?>
+                    <form method="post" style="margin-top:12px;">
+                        <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
+                        <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
+                        <label>Type
+                            <select name="field_type" required>
+                                <option value="text">Text</option>
+                                <option value="number">Number</option>
+                                <option value="datetime">Datetime</option>
+                            </select>
+                        </label>
+                        <label>Label
+                            <input type="text" name="field_label" required />
+                        </label>
+                        <label>Tag
+                            <input type="text" name="field_tag" required />
+                        </label>
+                        <label>Default Value
+                            <input type="text" name="field_default_value" />
+                        </label>
+                        <input type="submit" name="df_wc_sendmailsio_add_field" class="button" value="Add Field" />
+                    </form>
+                    <?php
+                    echo '</fieldset>';
+                }
+            }
+        }
+    }
+}
             // Handle options for dropdown, multiselect, radio
             $type_upper = strtoupper(sanitize_text_field($_POST['field_type']));
             if (in_array($type_upper, array('DROPDOWN', 'MULTISELECT', 'RADIO')) && !empty($_POST['field_options'])) {
