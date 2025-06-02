@@ -2,7 +2,7 @@
 /*
 Plugin Name: DF - Woocommerce Sendmails.io
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.11
+Version: 0.12
 Author: radialmonster
 GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
 */
@@ -497,6 +497,94 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                 } else {
                                                     echo '<em>No fields found.</em>';
                                                 }
+                                                // Add WooCommerce customer fields section
+                                                $wc_fields = array(
+                                                    'billing_first_name' => array('label' => 'First Name', 'tag' => 'FIRST_NAME', 'type' => 'string'),
+                                                    'billing_last_name' => array('label' => 'Last Name', 'tag' => 'LAST_NAME', 'type' => 'string'),
+                                                    'billing_email' => array('label' => 'Email', 'tag' => 'EMAIL', 'type' => 'string'),
+                                                    'billing_phone' => array('label' => 'Phone Number', 'tag' => 'PHONENUMBER', 'type' => 'string'),
+                                                    'billing_company' => array('label' => 'Company', 'tag' => 'BILLING_COMPANY', 'type' => 'string'),
+                                                    'billing_address_1' => array('label' => 'Address 1', 'tag' => 'BILLING_ADDRESS_1', 'type' => 'string'),
+                                                    'billing_address_2' => array('label' => 'Address 2', 'tag' => 'BILLING_ADDRESS_2', 'type' => 'string'),
+                                                    'billing_city' => array('label' => 'City', 'tag' => 'BILLING_CITY', 'type' => 'string'),
+                                                    'billing_state' => array('label' => 'State', 'tag' => 'BILLING_STATE', 'type' => 'string'),
+                                                    'billing_postcode' => array('label' => 'Postcode', 'tag' => 'BILLING_POSTCODE', 'type' => 'string'),
+                                                    'billing_country' => array('label' => 'Country', 'tag' => 'BILLING_COUNTRY', 'type' => 'string'),
+                                                    'shipping_first_name' => array('label' => 'Shipping First Name', 'tag' => 'SHIPPING_FIRST_NAME', 'type' => 'string'),
+                                                    'shipping_last_name' => array('label' => 'Shipping Last Name', 'tag' => 'SHIPPING_LAST_NAME', 'type' => 'string'),
+                                                    'shipping_company' => array('label' => 'Shipping Company', 'tag' => 'SHIPPING_COMPANY', 'type' => 'string'),
+                                                    'shipping_address_1' => array('label' => 'Shipping Address 1', 'tag' => 'SHIPPING_ADDRESS_1', 'type' => 'string'),
+                                                    'shipping_address_2' => array('label' => 'Shipping Address 2', 'tag' => 'SHIPPING_ADDRESS_2', 'type' => 'string'),
+                                                    'shipping_city' => array('label' => 'Shipping City', 'tag' => 'SHIPPING_CITY', 'type' => 'string'),
+                                                    'shipping_state' => array('label' => 'Shipping State', 'tag' => 'SHIPPING_STATE', 'type' => 'string'),
+                                                    'shipping_postcode' => array('label' => 'Shipping Postcode', 'tag' => 'SHIPPING_POSTCODE', 'type' => 'string'),
+                                                    'shipping_country' => array('label' => 'Shipping Country', 'tag' => 'SHIPPING_COUNTRY', 'type' => 'string'),
+                                                );
+                                                // Handle add WooCommerce fields form submission
+                                                if (!empty($_POST['df_wc_sendmailsio_add_wc_fields']) && !empty($_POST['product_id']) && !empty($_POST['list_uid'])) {
+                                                    $product_id = intval($_POST['product_id']);
+                                                    $list_uid = sanitize_text_field($_POST['list_uid']);
+                                                    $api_key = get_option('df_wc_sendmailsio_api_key', '');
+                                                    $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
+                                                    $added = array();
+                                                    $errors = array();
+                                                    if ($api_key && $list_uid && !empty($_POST['wc_fields'])) {
+                                                        foreach ($_POST['wc_fields'] as $field_key) {
+                                                            if (!isset($wc_fields[$field_key])) continue;
+                                                            $f = $wc_fields[$field_key];
+                                                            $field_data = array(
+                                                                'type' => $f['type'],
+                                                                'label' => $f['label'],
+                                                                'tag' => $f['tag'],
+                                                                'required' => !empty($_POST['wc_field_required'][$field_key]) ? 1 : 0,
+                                                                'visible' => isset($_POST['wc_field_visible'][$field_key]) ? 1 : 0,
+                                                            );
+                                                            $add_field_url = trailingslashit($api_endpoint) . 'lists/' . urlencode($list_uid) . '/add-field';
+                                                            $add_field_url = add_query_arg('api_token', $api_key, $add_field_url);
+                                                            $add_field_response = wp_remote_post($add_field_url, array(
+                                                                'headers' => array('Accept' => 'application/json'),
+                                                                'body' => $field_data,
+                                                                'timeout' => 15,
+                                                            ));
+                                                            if (!is_wp_error($add_field_response) && wp_remote_retrieve_response_code($add_field_response) === 200) {
+                                                                $added[] = $f['label'];
+                                                            } else {
+                                                                $errors[] = $f['label'];
+                                                            }
+                                                        }
+                                                        if ($added) {
+                                                            echo '<div class="notice notice-success"><p>Added: ' . esc_html(implode(', ', $added)) . '</p></div>';
+                                                        }
+                                                        if ($errors) {
+                                                            echo '<div class="notice notice-error"><p>Failed: ' . esc_html(implode(', ', $errors)) . '</p></div>';
+                                                        }
+                                                    }
+                                                }
+                                                // Add WooCommerce fields form
+                                                ?>
+                                                <form method="post" style="margin-bottom:18px; border:1px solid #ccc; padding:10px; background:#f9f9f9;">
+                                                    <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
+                                                    <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
+                                                    <strong>Add Fields from WooCommerce Customer Data</strong>
+                                                    <table style="width:100%;margin-top:8px;">
+                                                        <tr>
+                                                            <th style="text-align:left;">Select</th>
+                                                            <th style="text-align:left;">Field</th>
+                                                            <th>Required</th>
+                                                            <th>Visible</th>
+                                                        </tr>
+                                                        <?php foreach ($wc_fields as $key => $f): ?>
+                                                        <tr>
+                                                            <td><input type="checkbox" name="wc_fields[]" value="<?php echo esc_attr($key); ?>" id="wc_field_<?php echo esc_attr($key); ?>" /></td>
+                                                            <td><label for="wc_field_<?php echo esc_attr($key); ?>"><?php echo esc_html($f['label']); ?></label></td>
+                                                            <td style="text-align:center;"><input type="checkbox" name="wc_field_required[<?php echo esc_attr($key); ?>]" value="1" /></td>
+                                                            <td style="text-align:center;"><input type="checkbox" name="wc_field_visible[<?php echo esc_attr($key); ?>]" value="1" checked /></td>
+                                                        </tr>
+                                                        <?php endforeach; ?>
+                                                    </table>
+                                                    <input type="submit" name="df_wc_sendmailsio_add_wc_fields" class="button" value="Add Selected Fields" style="margin-top:8px;" />
+                                                </form>
+                                                <?php
                                                 // Add custom field form
                                                 ?>
                                                 <form method="post" style="margin-top:12px;" id="df-wc-sendmailsio-add-field-form">
