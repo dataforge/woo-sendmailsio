@@ -80,20 +80,6 @@ function df_wc_sendmailsio_get_all_lists() {
     return $data;
 }
 
-/**
- * Product List Mapping Page
- */
-function df_wc_sendmailsio_product_mapping_page() {
-    global $wpdb;
-    // Handle mapping save
-    df_wc_sendmailsio_handle_save_mapping();
-
-    // Handle add custom field to list
-    df_wc_sendmailsio_handle_add_field();
-
-    // Handle create new list and assign
-    df_wc_sendmailsio_handle_create_list();
-}
 
 /**
  * Handle saving the product to list mapping.
@@ -337,102 +323,11 @@ function df_wc_sendmailsio_handle_add_field() {
         }
     }
 }
-            // Handle options for dropdown, multiselect, radio
-            $type_upper = strtoupper(sanitize_text_field($_POST['field_type']));
-            if (in_array($type_upper, array('DROPDOWN', 'MULTISELECT', 'RADIO')) && !empty($_POST['field_options'])) {
-                // Send as comma-separated or array, depending on API
-                $options_raw = trim($_POST['field_options']);
-                $options = array_filter(array_map('trim', preg_split('/\r\n|\r|\n|,/', $options_raw)));
-                if (!empty($options)) {
-                    $field_data['options'] = $options;
-                }
-            }
-            // Required and visible flags
-            $field_data['required'] = !empty($_POST['field_required']) ? 1 : 0;
-            $field_data['visible'] = isset($_POST['field_visible']) ? 1 : 0;
-            $add_field_response = wp_remote_post($add_field_url, array(
-                'headers' => array('Accept' => 'application/json'),
-                'body' => $field_data,
-                'timeout' => 15,
-            ));
-            if (is_wp_error($add_field_response)) {
-                echo '<div class="notice notice-error"><p>API error: ' . esc_html($add_field_response->get_error_message()) . '</p></div>';
-            } else {
-                $code = wp_remote_retrieve_response_code($add_field_response);
-                $body = wp_remote_retrieve_body($add_field_response);
-                if ($code === 200) {
-                    echo '<div class="notice notice-success"><p>Custom field added successfully.</p></div>';
-                } else {
-                    echo '<div class="notice notice-error"><p>Failed to add field: ' . esc_html($body) . '</p></div>';
-                }
-            }
-            // Fetch and display updated fields
-            $list_api_url = trailingslashit($api_endpoint) . 'lists/' . urlencode($list_uid);
-            $list_api_url = add_query_arg('api_token', $api_key, $list_api_url);
-            $list_response = wp_remote_get($list_api_url, array('headers' => array('Accept' => 'application/json'), 'timeout' => 15));
-            if (!is_wp_error($list_response) && wp_remote_retrieve_response_code($list_response) === 200) {
-                $list_info = json_decode(wp_remote_retrieve_body($list_response), true);
-                if (is_array($list_info)) {
-                    echo '<fieldset style="border:1px solid #ccc;padding:8px;margin-top:16px;"><legend style="font-weight:bold;">List Fields</legend>';
-                    echo '<div><strong>Fields:</strong></div>';
-                    if (!empty($list_info['fields']) && is_array($list_info['fields'])) {
-                        echo '<ul>';
-                        foreach ($list_info['fields'] as $field) {
-                            echo '<li><ul style="margin-bottom:8px;">';
-                            echo '<li><strong>Label:</strong> ' . (isset($field['label']) ? esc_html($field['label']) : '<em>n/a</em>') . '</li>';
-                            echo '<li><strong>Type:</strong> ' . (isset($field['type']) ? esc_html($field['type']) : '<em>n/a</em>') . '</li>';
-                            echo '<li><strong>Tag:</strong> ' . (isset($field['tag']) ? esc_html($field['tag']) : '<em>n/a</em>') . '</li>';
-                            echo '<li><strong>Required:</strong> ' . (isset($field['required']) && $field['required'] ? 'Yes' : 'No') . '</li>';
-                            echo '<li><strong>Visible:</strong> ' . (isset($field['visible']) && $field['visible'] ? 'Yes' : 'No') . '</li>';
-                            if (isset($field['default_value']) && $field['default_value'] !== '') {
-                                echo '<li><strong>Default Value:</strong> ' . esc_html($field['default_value']) . '</li>';
-                            }
-                            if (isset($field['options']) && is_array($field['options']) && count($field['options'])) {
-                                echo '<li><strong>Options:</strong> ' . esc_html(implode(', ', $field['options'])) . '</li>';
-                            }
-                            // Show any other properties
-                            foreach ($field as $k => $v) {
-                                if (in_array($k, array('label','type','tag','required','visible','default_value','options'))) continue;
-                                if (is_array($v)) $v = json_encode($v);
-                                echo '<li><strong>' . esc_html(ucwords(str_replace('_',' ',$k))) . ':</strong> ' . esc_html($v) . '</li>';
-                            }
-                            echo '</ul></li>';
-                        }
-                        echo '</ul>';
-                    } else {
-                        echo '<em>No fields found.</em>';
-                    }
-                    // Add custom field form
-                    ?>
-                    <form method="post" style="margin-top:12px;">
-                        <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
-                        <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
-                        <label>Type
-                            <select name="field_type" required>
-                                <option value="text">Text</option>
-                                <option value="number">Number</option>
-                                <option value="datetime">Datetime</option>
-                            </select>
-                        </label>
-                        <label>Label
-                            <input type="text" name="field_label" required />
-                        </label>
-                        <label>Tag
-                            <input type="text" name="field_tag" required />
-                        </label>
-                        <label>Default Value
-                            <input type="text" name="field_default_value" />
-                        </label>
-                        <input type="submit" name="df_wc_sendmailsio_add_field" class="button" value="Add Field" />
-                    </form>
-                    <?php
-                    echo '</fieldset>';
-                }
-            }
-        }
-    }
 
-    // Handle create new list and assign
+/**
+ * Handle creating a new list and assigning it to a product.
+ */
+function df_wc_sendmailsio_handle_create_list() {
     if (!empty($_POST['df_wc_sendmailsio_create_list']) && !empty($_POST['product_id'])) {
         $product_id = intval($_POST['product_id']);
         if (isset($_POST['df_wc_sendmailsio_create_list_nonce_' . $product_id]) && wp_verify_nonce($_POST['df_wc_sendmailsio_create_list_nonce_' . $product_id], 'df_wc_sendmailsio_create_list_' . $product_id)) {
@@ -538,6 +433,21 @@ function df_wc_sendmailsio_handle_add_field() {
             echo '<div class="notice notice-error"><p>Security check failed. Please try again.</p></div>';
         }
     }
+}
+
+/**
+ * Product List Mapping Page
+ */
+function df_wc_sendmailsio_product_mapping_page() {
+    global $wpdb;
+    // Handle mapping save
+    df_wc_sendmailsio_handle_save_mapping();
+
+    // Handle add custom field to list
+    df_wc_sendmailsio_handle_add_field();
+
+    // Handle create new list and assign
+    df_wc_sendmailsio_handle_create_list();
     ?>
     <div class="wrap">
         <h1>WooCommerce Product to Sendmails.io List Mapping</h1>
