@@ -792,6 +792,7 @@ function df_wc_sendmailsio_product_mapping_page() {
                                         }
                                     }
                                     </script>
+                                <?php if (!is_wp_error($lists) && is_array($lists)): ?>
                                 <?php else: ?>
                                     <em>Cannot load lists</em>
                                 <?php endif; ?>
