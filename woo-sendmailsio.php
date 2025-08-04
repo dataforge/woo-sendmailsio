@@ -98,6 +98,7 @@ function df_wc_sendmailsio_handle_save_mapping() {
             }
         } else {
             echo '<div class="notice notice-error"><p>Security check failed. Please try again.</p></div>';
+        }
     }
 }
 
@@ -320,117 +321,6 @@ function df_wc_sendmailsio_handle_add_field() {
                     echo '</fieldset>';
                 }
             }
-        }
-    }
-}
-
-/**
- * Handle creating a new list and assigning it to a product.
- */
-function df_wc_sendmailsio_handle_create_list() {
-    if (!empty($_POST['df_wc_sendmailsio_create_list']) && !empty($_POST['product_id'])) {
-        $product_id = intval($_POST['product_id']);
-        if (isset($_POST['df_wc_sendmailsio_create_list_nonce_' . $product_id]) && wp_verify_nonce($_POST['df_wc_sendmailsio_create_list_nonce_' . $product_id], 'df_wc_sendmailsio_create_list_' . $product_id)) {
-            // Collect and sanitize fields
-            $fields = array(
-                'name' => sanitize_text_field($_POST['new_list_name']),
-                'from_email' => sanitize_email($_POST['from_email']),
-                'from_name' => sanitize_text_field($_POST['from_name']),
-                'subscribe_confirmation' => 1,
-                'send_welcome_email' => 1,
-                'unsubscribe_notification' => 1,
-            );
-            // Optional fields: only include if not empty
-            if (!empty($_POST['company'])) {
-                $fields['contact[company]'] = sanitize_text_field($_POST['company']);
-            }
-            if (!empty($_POST['contact_email'])) {
-                $fields['contact[email]'] = sanitize_email($_POST['contact_email']);
-            }
-            if (!empty($_POST['country_id'])) {
-                $fields['contact[country_id]'] = sanitize_text_field($_POST['country_id']);
-            }
-            if (!empty($_POST['city'])) {
-                $fields['contact[city]'] = sanitize_text_field($_POST['city']);
-            }
-            if (!empty($_POST['state'])) {
-                $fields['contact[state]'] = sanitize_text_field($_POST['state']);
-            }
-            if (!empty($_POST['address_1'])) {
-                $fields['contact[address_1]'] = sanitize_text_field($_POST['address_1']);
-            }
-            if (!empty($_POST['address_2'])) {
-                $fields['contact[address_2]'] = sanitize_text_field($_POST['address_2']);
-            }
-            if (!empty($_POST['zip'])) {
-                $fields['contact[zip]'] = sanitize_text_field($_POST['zip']);
-            }
-            if (!empty($_POST['phone'])) {
-                $fields['contact[phone]'] = sanitize_text_field($_POST['phone']);
-            }
-            if (!empty($_POST['url'])) {
-                $fields['contact[url]'] = esc_url_raw($_POST['url']);
-            }
-            $api_key = get_option('df_wc_sendmailsio_api_key', '');
-            $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
-            if ($api_key) {
-                $url = trailingslashit($api_endpoint) . 'lists';
-                $url = add_query_arg('api_token', $api_key, $url);
-                $args = array(
-                    'headers' => array('Accept' => 'application/json'),
-                    'body' => $fields,
-                    'timeout' => 20,
-                );
-                $response = wp_remote_post($url, $args);
-                if (is_wp_error($response)) {
-                    echo '<div class="notice notice-error"><p>API error: ' . esc_html($response->get_error_message()) . '</p></div>';
-                } else {
-                    $code = wp_remote_retrieve_response_code($response);
-                    $body = wp_remote_retrieve_body($response);
-                    $data = json_decode($body, true);
-                    $new_uid = null;
-                    if ($code === 200) {
-                        if (isset($data['uid'])) {
-                            $new_uid = $data['uid'];
-                        } elseif (isset($data['data']['uid'])) {
-                            $new_uid = $data['data']['uid'];
-                        }
-                    }
-                    // If UID is not found but message indicates success, treat as success
-                    $success_message = '';
-                    if (!$new_uid && isset($data['message']) && stripos($data['message'], 'success') !== false) {
-                        $success_message = $data['message'];
-                        // Try to find the new list by name
-                        $lists = df_wc_sendmailsio_get_all_lists();
-                        if (is_array($lists)) {
-                            foreach ($lists as $list) {
-                                if (
-                                    (isset($list['name']) && $list['name'] === $_POST['new_list_name']) ||
-                                    (isset($list['list_name']) && $list['list_name'] === $_POST['new_list_name'])
-                                ) {
-                                    $new_uid = isset($list['uid']) ? $list['uid'] : (isset($list['id']) ? $list['id'] : null);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if ($new_uid) {
-                        update_post_meta($product_id, '_sendmailsio_list_uid', $new_uid);
-                        // Redirect to refresh the page and show the new mapping in the Current List column
-                        wp_safe_redirect(add_query_arg(array('page' => 'df-wc-sendmailsio-product-mapping'), admin_url('admin.php')));
-                        exit;
-                    } elseif ($success_message) {
-                        echo '<div class="notice notice-success"><p>' . esc_html($success_message) . '</p></div>';
-                    } else {
-                        $msg = isset($data['message']) ? $data['message'] : $body;
-                        echo '<div class="notice notice-error"><p>Failed to create list: ' . esc_html($msg) . '</p></div>';
-                    }
-                }
-            } else {
-                echo '<div class="notice notice-error"><p>No API key set.</p></div>';
-            }
-        } else {
-            echo '<div class="notice notice-error"><p>Security check failed. Please try again.</p></div>';
         }
     }
 }
@@ -711,36 +601,9 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         $order_ids_wc_query[] = $order_obj->get_id();
                                                     }
 
-                                                    // Add debug logging for the wc_get_orders() result
-                                                    error_log('DF_WC_SENDMAILS_IO DEBUG: wc_get_orders order_ids: ' . print_r($order_ids_wc_query, true));
-
-                                                    // Debug: Show what post statuses actually exist (still useful for general context)
-                                                    $status_debug = $wpdb->get_results(
-                                                        "SELECT post_status, COUNT(*) as count FROM {$wpdb->posts} WHERE post_type = 'shop_order' GROUP BY post_status ORDER BY count DESC"
-                                                    );
-                                                    echo '<div style="color:#888;font-size:12px;">DEBUG: Order statuses in DB: ';
-                                                    foreach ($status_debug as $status) {
-                                                        echo esc_html($status->post_status) . '(' . esc_html($status->count) . ') ';
-                                                    }
-                                                    echo '</div>';
-
-                                                    echo '<div style="color:#080;font-size:13px;margin-bottom:4px;">SUCCESS: Found ' . count($order_ids_wc_query) . ' order IDs (from wc_get_orders): ' . esc_html(implode(',', array_slice($order_ids_wc_query, 0, 10))) . (count($order_ids_wc_query) > 10 ? ', ...' : '') . '</div>';
-                                                    echo '<div style="color:#888;font-size:12px;">DEBUG: post_type_exists("shop_order") = ' . (post_type_exists('shop_order') ? 'true' : 'false') . '</div>';
-                                                    echo '<div style="color:#888;font-size:12px;">DEBUG: Registered post types: ' . esc_html(implode(', ', get_post_types())) . '</div>';
-                                                    $test_order_ids = get_posts(array('post_type'=>'shop_order','posts_per_page'=>1,'fields'=>'ids', 'post_status' => 'any'));
-                                                    echo '<div style="color:#888;font-size:12px;">DEBUG: get_posts for 1 shop_order (any status): ' . esc_html(implode(',', $test_order_ids)) . '</div>';
-                                                    $debug_ids = array(1029, 1017);
-                                                    foreach ($debug_ids as $did) {
-                                                        $o = wc_get_order($did);
-                                                        if ($o) {
-                                                            echo '<div style="color:#c00;font-size:12px;">DEBUG: Order ' . $did . ' found. Billing email: ' . esc_html($o->get_billing_email()) . ', Billing name: ' . esc_html($o->get_billing_first_name() . ' ' . $o->get_billing_last_name()) . '</div>';
-                                                        } else {
-                                                            echo '<div style="color:#c00;font-size:12px;">DEBUG: Order ' . $did . ' NOT FOUND.</div>';
-                                                        }
-                                                    }
-                                                    // Use the found order IDs for navigation, prioritizing wc_get_orders results
+                                                    // Use the found order IDs for navigation
                                                     $customer_samples = array();
-                                                    $order_ids_to_use = !empty($order_ids_wc_query) ? $order_ids_wc_query : $debug_ids;
+                                                    $order_ids_to_use = $order_ids_wc_query;
                                                     foreach ($order_ids_to_use as $oid) {
                                                         $order = wc_get_order($oid);
                                                         if (!$order) continue;
@@ -1034,8 +897,7 @@ function df_wc_sendmailsio_ajax_get_sample_customer() {
         $order_ids_wc_query[] = $order_obj->get_id();
     }
 
-    $debug_ids = array(1029, 1017); // Fallback debug IDs
-    $order_ids_to_use = !empty($order_ids_wc_query) ? $order_ids_wc_query : $debug_ids;
+    $order_ids_to_use = $order_ids_wc_query;
 
     foreach ($order_ids_to_use as $oid) {
         $order = wc_get_order($oid);
