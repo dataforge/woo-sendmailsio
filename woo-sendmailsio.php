@@ -14,31 +14,30 @@ if (!defined('ABSPATH')) {
 
 add_action('admin_menu', 'df_wc_sendmailsio_add_admin_menu');
 function df_wc_sendmailsio_add_admin_menu() {
-    add_menu_page(
-        'DF - Woocommerce Sendmails.io',
-        'DF - Woocommerce Sendmails.io',
+    add_submenu_page(
+        'woocommerce',
+        'Woo SendmailsIO',
+        'Woo SendmailsIO',
         'manage_options',
         'df-wc-sendmailsio',
-        'df_wc_sendmailsio_settings_page',
-        'dashicons-email-alt2',
-        56
+        'df_wc_sendmailsio_settings_page'
     );
     add_submenu_page(
-        'df-wc-sendmailsio',
+        'woocommerce',
         'Product List Mapping',
         'Product List Mapping',
         'read', // all logged-in users
         'df-wc-sendmailsio-product-mapping',
         'df_wc_sendmailsio_product_mapping_page'
     );
-    }
+}
 /**
  * Handle adding a custom field to a list.
  */
 function df_wc_sendmailsio_settings_page() {
     ?>
     <div class="wrap">
-        <h1>DF - Woocommerce Sendmails.io</h1>
+        <h1>Woo SendmailsIO</h1>
         <h2 class="nav-tab-wrapper">
             <a href="#" class="nav-tab nav-tab-active">Settings</a>
             <a href="<?php echo admin_url('admin.php?page=df-wc-sendmailsio-product-mapping'); ?>" class="nav-tab">Product List Mapping</a>
@@ -340,7 +339,7 @@ function df_wc_sendmailsio_product_mapping_page() {
     df_wc_sendmailsio_handle_create_list();
     ?>
     <div class="wrap">
-        <h1>WooCommerce Product to Sendmails.io List Mapping</h1>
+        <h1>Woo SendmailsIO - Product List Mapping</h1>
         <p>Associate each WooCommerce product with a sendmails.io list. If a list does not exist, you can create one inline.</p>
         <?php
         $lists = df_wc_sendmailsio_get_all_lists();
