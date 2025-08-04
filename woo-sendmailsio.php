@@ -225,7 +225,6 @@ function df_wc_sendmailsio_handle_create_list() {
         }
     }
 }
-}
 
 /**
  * Handle adding a custom field to a list.
