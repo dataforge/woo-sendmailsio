@@ -411,11 +411,7 @@ function df_wc_sendmailsio_product_mapping_page() {
                                         <input type="submit" name="df_wc_sendmailsio_save_mapping" class="button" value="Save" />
                                     </form>
                                     <?php if ($list_uid): ?>
-                                        <form method="post" style="display:inline;">
-                                            <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>" />
-                                            <input type="hidden" name="list_uid" value="<?php echo esc_attr($list_uid); ?>" />
-                                            <input type="submit" name="df_wc_sendmailsio_show_fields" class="button" value="Manage List Fields" />
-                                        </form>
+                                        <button type="button" class="button" onclick="toggleListFields('<?php echo esc_attr($product_id); ?>', '<?php echo esc_attr($list_uid); ?>')">Manage List Fields</button>
                                     <?php endif; ?>
                                     <br>
                                     <details>
@@ -472,9 +468,11 @@ function df_wc_sendmailsio_product_mapping_page() {
                                         </form>
                                         <!-- List Fields section will be rendered after list creation -->
                                     </details>
+                                    <?php endif; ?>
+                                    <div id="list-fields-<?php echo esc_attr($product_id); ?>" style="display:none;">
                                     <?php
-                                    // Show List Fields section if requested
-                                    if (!empty($_POST['df_wc_sendmailsio_show_fields']) && !empty($_POST['list_uid']) && intval($_POST['product_id']) === $product_id) {
+                                    // Show List Fields section - now loaded via JavaScript
+                                    if ($list_uid) {
                                         $api_key = get_option('df_wc_sendmailsio_api_key', '');
                                         $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
                                         $list_api_url = trailingslashit($api_endpoint) . 'lists/' . urlencode($list_uid);
@@ -783,6 +781,17 @@ function df_wc_sendmailsio_product_mapping_page() {
                                         }
                                     }
                                     ?>
+                                    </div>
+                                    <script>
+                                    function toggleListFields(productId, listUid) {
+                                        var fieldsDiv = document.getElementById('list-fields-' + productId);
+                                        if (fieldsDiv.style.display === 'none' || fieldsDiv.style.display === '') {
+                                            fieldsDiv.style.display = 'block';
+                                        } else {
+                                            fieldsDiv.style.display = 'none';
+                                        }
+                                    }
+                                    </script>
                                 <?php else: ?>
                                     <em>Cannot load lists</em>
                                 <?php endif; ?>
