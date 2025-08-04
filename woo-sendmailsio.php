@@ -1,10 +1,11 @@
 <?php
 /*
-Plugin Name: DF - Woocommerce Sendmails.io
+Plugin Name: woo-sendmailsio
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
 Version: 0.14
-Author: radialmonster
-GitHub Plugin URI: https://github.com/radialmonster/woocommerce-sendmails.io
+Author: dataforge
+GitHub Plugin URI: https://github.com/dataforge/woo-sendmailsio
+Update URI: https://video.dataforge.us/wp-json/git-updater/v1/update/?key=40d21d0bae413cf7b77b0219c19047c6
 */
 
 if (!defined('ABSPATH')) {
