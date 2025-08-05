@@ -1377,6 +1377,10 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         $api_key = get_option('df_wc_sendmailsio_api_key', '');
         $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
         
+        // Debug logging for API key
+        error_log("Bulk sync API key debug: '" . $api_key . "' (length: " . strlen($api_key) . ")");
+        error_log("API endpoint: " . $api_endpoint);
+        
         if (empty($api_key)) {
             $stats['details'][] = 'SendMails.io API key not configured';
             return $stats;
