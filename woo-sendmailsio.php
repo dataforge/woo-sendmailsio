@@ -1451,8 +1451,12 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             )
         );
 
+        error_log("Searching for orders with status: " . implode(', ', $args['post_status']));
         $orders = get_posts($args);
+        error_log("Found " . count($orders) . " total orders");
+        
         $unique_customers = array();
+        $orders_with_product = 0;
 
         // Find orders containing our product
         foreach ($orders as $order_post) {
@@ -1460,9 +1464,11 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             if (!$order) continue;
 
             $has_product = false;
+            $order_products = array();
             foreach ($order->get_items() as $item) {
                 $item_product_id = $item->get_product_id();
                 $item_variation_id = $item->get_variation_id();
+                $order_products[] = "Product ID: $item_product_id" . ($item_variation_id ? ", Variation ID: $item_variation_id" : "");
                 
                 // Check if this item matches our product (including variations)
                 if ($item_product_id == $product_id || 
@@ -1474,12 +1480,22 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             }
 
             if ($has_product) {
+                $orders_with_product++;
                 $customer_email = $order->get_billing_email();
                 if ($customer_email && !in_array($customer_email, $unique_customers)) {
                     $unique_customers[] = $customer_email;
                 }
+                error_log("Order " . $order->get_id() . " contains product $product_id, customer: " . $customer_email);
+            } else {
+                // Log first few orders that don't match to see what products they contain
+                if ($orders_with_product < 5) {
+                    error_log("Order " . $order->get_id() . " does not contain product $product_id. Contains: " . implode('; ', $order_products));
+                }
             }
         }
+        
+        error_log("Found $orders_with_product orders with product $product_id");
+        error_log("Found " . count($unique_customers) . " unique customers");
 
         $stats['total'] = count($unique_customers);
 
