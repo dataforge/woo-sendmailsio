@@ -412,6 +412,9 @@ function df_wc_sendmailsio_product_mapping_page() {
                                     </form>
                                     <?php if ($list_uid): ?>
                                         <button type="button" class="button" onclick="toggleListFields('<?php echo esc_attr($product_id); ?>', '<?php echo esc_attr($list_uid); ?>')">Manage List Fields</button>
+                                        <br>
+                                        <button type="button" class="button button-secondary" id="sync-past-customers-<?php echo esc_attr($product_id); ?>" onclick="syncPastCustomers('<?php echo esc_attr($product_id); ?>', '<?php echo esc_attr($list_uid); ?>')">Sync Past Customers</button>
+                                        <div id="sync-progress-<?php echo esc_attr($product_id); ?>" style="margin-top:5px;font-size:12px;color:#666;display:none;"></div>
                                     <?php endif; ?>
                                     <br>
                                     <details>
@@ -807,6 +810,53 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         });
                                                     }
                                                 });
+
+                                                // Sync Past Customers Function
+                                                function syncPastCustomers(productId, listUid) {
+                                                    const button = document.getElementById('sync-past-customers-' + productId);
+                                                    const progressDiv = document.getElementById('sync-progress-' + productId);
+                                                    
+                                                    // Update UI
+                                                    button.disabled = true;
+                                                    button.textContent = 'Syncing...';
+                                                    progressDiv.style.display = 'block';
+                                                    progressDiv.innerHTML = 'Finding customers...';
+                                                    
+                                                    // AJAX request
+                                                    const data = new FormData();
+                                                    data.append('action', 'df_wc_sendmailsio_sync_past_customers');
+                                                    data.append('product_id', productId);
+                                                    data.append('list_uid', listUid);
+                                                    data.append('nonce', '<?php echo wp_create_nonce("df_wc_sendmailsio_sync_nonce"); ?>');
+                                                    
+                                                    fetch(ajaxurl, {
+                                                        method: 'POST',
+                                                        body: data
+                                                    })
+                                                    .then(response => response.json())
+                                                    .then(result => {
+                                                        if (result.success) {
+                                                            progressDiv.innerHTML = `<span style="color:#080;">✓ ${result.data.message}</span>`;
+                                                        } else {
+                                                            progressDiv.innerHTML = `<span style="color:#d00;">✗ ${result.data}</span>`;
+                                                        }
+                                                        
+                                                        // Reset button
+                                                        button.disabled = false;
+                                                        button.textContent = 'Sync Past Customers';
+                                                        
+                                                        // Hide progress after 10 seconds
+                                                        setTimeout(() => {
+                                                            progressDiv.style.display = 'none';
+                                                        }, 10000);
+                                                    })
+                                                    .catch(error => {
+                                                        console.error('Sync Error:', error);
+                                                        progressDiv.innerHTML = '<span style="color:#d00;">✗ Sync failed - check console</span>';
+                                                        button.disabled = false;
+                                                        button.textContent = 'Sync Past Customers';
+                                                    });
+                                                }
                                                 </script>
                                                 <?php
                                                 echo '</fieldset>';
@@ -1298,5 +1348,204 @@ function df_wc_sendmailsio_update_subscriber($subscriber_uid, $customer_data, $l
         $body = wp_remote_retrieve_body($response);
         error_log('Woo SendmailsIO: Failed to update subscriber - ' . $body);
         return false;
+    }
+}
+
+/**
+ * Bulk sync customers who previously purchased a specific product
+ */
+function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
+    $stats = array(
+        'success' => false,
+        'total' => 0,
+        'created' => 0,
+        'updated' => 0,
+        'skipped' => 0,
+        'errors' => 0,
+        'details' => array()
+    );
+
+    try {
+        // Get product mapping and list configuration
+        $product_mappings = get_option('df_wc_sendmailsio_product_mappings', array());
+        $list_configs = get_option('df_wc_sendmailsio_list_configs', array());
+        
+        if (!isset($product_mappings[$product_id]) || !isset($list_configs[$list_uid])) {
+            $stats['details'][] = 'Product not mapped or list configuration missing';
+            return $stats;
+        }
+
+        $list_info = $list_configs[$list_uid];
+
+        // Get all orders containing this product (including variations)
+        $product = wc_get_product($product_id);
+        if (!$product) {
+            $stats['details'][] = 'Product not found';
+            return $stats;
+        }
+
+        // Build query args to find orders with this product
+        $args = array(
+            'post_type' => 'shop_order',
+            'post_status' => array('wc-completed', 'wc-processing'),
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_customer_user',
+                    'compare' => 'EXISTS'
+                )
+            )
+        );
+
+        $orders = get_posts($args);
+        $unique_customers = array();
+
+        // Find orders containing our product
+        foreach ($orders as $order_post) {
+            $order = wc_get_order($order_post->ID);
+            if (!$order) continue;
+
+            $has_product = false;
+            foreach ($order->get_items() as $item) {
+                $item_product_id = $item->get_product_id();
+                $item_variation_id = $item->get_variation_id();
+                
+                // Check if this item matches our product (including variations)
+                if ($item_product_id == $product_id || 
+                    ($item_variation_id && $item_variation_id == $product_id) ||
+                    ($product->is_type('variable') && $item_product_id == $product_id)) {
+                    $has_product = true;
+                    break;
+                }
+            }
+
+            if ($has_product) {
+                $customer_email = $order->get_billing_email();
+                if ($customer_email && !in_array($customer_email, $unique_customers)) {
+                    $unique_customers[] = $customer_email;
+                }
+            }
+        }
+
+        $stats['total'] = count($unique_customers);
+
+        // If no customers found
+        if (empty($unique_customers)) {
+            $stats['success'] = true;
+            $stats['details'][] = 'No customers found who purchased this product';
+            return $stats;
+        }
+
+        // Get SendMails.io settings
+        $settings = get_option('df_wc_sendmailsio_settings', array());
+        $api_key = isset($settings['api_key']) ? $settings['api_key'] : '';
+        
+        if (empty($api_key)) {
+            $stats['details'][] = 'SendMails.io API key not configured';
+            return $stats;
+        }
+
+        // Sync each unique customer
+        foreach ($unique_customers as $customer_email) {
+            // Find the most recent order for this customer with this product
+            $customer_orders = wc_get_orders(array(
+                'billing_email' => $customer_email,
+                'status' => array('completed', 'processing'),
+                'limit' => -1
+            ));
+
+            $target_order = null;
+            foreach ($customer_orders as $order) {
+                foreach ($order->get_items() as $item) {
+                    $item_product_id = $item->get_product_id();
+                    $item_variation_id = $item->get_variation_id();
+                    
+                    if ($item_product_id == $product_id || 
+                        ($item_variation_id && $item_variation_id == $product_id) ||
+                        ($product->is_type('variable') && $item_product_id == $product_id)) {
+                        $target_order = $order;
+                        break 2;
+                    }
+                }
+            }
+
+            if (!$target_order) continue;
+
+            // Extract customer data using existing function
+            $customer_data = df_wc_sendmailsio_extract_customer_data($target_order, $list_info);
+            
+            if (empty($customer_data)) {
+                $stats['skipped']++;
+                continue;
+            }
+
+            // Sync to SendMails.io
+            $sync_result = df_wc_sendmailsio_sync_customer_to_list($customer_data, $list_uid, $api_key);
+            
+            if ($sync_result === true) {
+                $stats['created']++;
+            } elseif ($sync_result === 'updated') {
+                $stats['updated']++;  
+            } elseif ($sync_result === 'skipped') {
+                $stats['skipped']++;
+            } else {
+                $stats['errors']++;
+                $stats['details'][] = "Error syncing {$customer_email}: " . $sync_result;
+            }
+        }
+
+        $stats['success'] = true;
+        
+    } catch (Exception $e) {
+        $stats['details'][] = 'Exception: ' . $e->getMessage();
+        error_log('Bulk sync error: ' . $e->getMessage());
+    }
+
+    return $stats;
+}
+
+// Hook AJAX handler for past customer sync
+add_action('wp_ajax_df_wc_sendmailsio_sync_past_customers', 'df_wc_sendmailsio_handle_sync_past_customers');
+
+/**
+ * AJAX handler for syncing past customers
+ */
+function df_wc_sendmailsio_handle_sync_past_customers() {
+    // Verify nonce
+    if (!wp_verify_nonce($_POST['nonce'], 'df_wc_sendmailsio_sync_nonce')) {
+        wp_send_json_error('Security check failed');
+        return;
+    }
+    
+    // Check permissions
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Insufficient permissions');
+        return;
+    }
+    
+    $product_id = intval($_POST['product_id']);
+    $list_uid = sanitize_text_field($_POST['list_uid']);
+    
+    if (!$product_id || !$list_uid) {
+        wp_send_json_error('Missing product ID or list UID');
+        return;
+    }
+    
+    // Perform the bulk sync
+    $result = df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid);
+    
+    if ($result['success']) {
+        wp_send_json_success(array(
+            'message' => sprintf(
+                'Synced %d customers (%d new, %d updated, %d skipped, %d errors)',
+                $result['total'],
+                $result['created'],
+                $result['updated'],
+                $result['skipped'],
+                $result['errors']
+            )
+        ));
+    } else {
+        wp_send_json_error($result['message']);
     }
 }
