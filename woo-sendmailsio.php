@@ -649,6 +649,16 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         <tbody id="df-wc-sendmailsio-sample-table-body">
                                                         <?php foreach ($wc_fields as $key => $f): 
                                                             $is_core = in_array($key, array('billing_email', 'billing_first_name', 'billing_last_name'));
+                                                            // Check if this field already exists in the SendMails.io list
+                                                            $field_exists = false;
+                                                            if (isset($list_info['list']['fields']) && is_array($list_info['list']['fields'])) {
+                                                                foreach ($list_info['list']['fields'] as $existing_field) {
+                                                                    if (isset($existing_field['tag']) && $existing_field['tag'] === $f['tag']) {
+                                                                        $field_exists = true;
+                                                                        break;
+                                                                    }
+                                                                }
+                                                            }
                                                             $sample_value = '';
                                                             if ($sample_order) {
                                                                 // Always use WC_Order getter for all fields
@@ -679,12 +689,14 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         <tr>
                                                             <td>
                                                                 <input type="checkbox" name="wc_fields[]" value="<?php echo esc_attr($key); ?>" id="wc_field_<?php echo esc_attr($key); ?>"
-                                                                <?php if ($is_core): ?> checked disabled <?php endif; ?> />
+                                                                <?php if ($is_core): ?> checked disabled <?php elseif ($field_exists): ?> checked <?php endif; ?> />
                                                             </td>
                                                             <td>
                                                                 <label for="wc_field_<?php echo esc_attr($key); ?>"><?php echo esc_html($f['label']); ?></label>
                                                                 <?php if ($is_core): ?>
                                                                     <span style="color:#888;font-size:11px;">(Required by Sendmails.io, mapped to WooCommerce)</span>
+                                                                <?php elseif ($field_exists): ?>
+                                                                    <span style="color:#080;font-size:11px;">(Already exists in list)</span>
                                                                 <?php endif; ?>
                                                             </td>
                                                             <td style="text-align:center;">
