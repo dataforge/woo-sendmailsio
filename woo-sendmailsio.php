@@ -1387,6 +1387,7 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         }
 
         // Get list fields from SendMails.io API to determine what fields exist
+        error_log("Fetching list fields from: " . $api_endpoint . '/lists/' . $list_uid);
         $list_response = wp_remote_get($api_endpoint . '/lists/' . $list_uid, array(
             'headers' => array(
                 'Authorization' => 'Bearer ' . $api_key,
@@ -1395,13 +1396,19 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         ));
 
         if (is_wp_error($list_response)) {
-            $stats['details'][] = 'Failed to fetch list information from SendMails.io';
+            error_log("List API error: " . $list_response->get_error_message());
+            $stats['details'][] = 'Failed to fetch list information from SendMails.io: ' . $list_response->get_error_message();
             return $stats;
         }
 
-        $list_data = json_decode(wp_remote_retrieve_body($list_response), true);
+        $response_code = wp_remote_retrieve_response_code($list_response);
+        $response_body = wp_remote_retrieve_body($list_response);
+        error_log("List API response code: $response_code");
+        error_log("List API response body: " . substr($response_body, 0, 500));
+
+        $list_data = json_decode($response_body, true);
         if (!$list_data || !isset($list_data['data']['fields'])) {
-            $stats['details'][] = 'Invalid list data from SendMails.io';
+            $stats['details'][] = 'Invalid list data from SendMails.io (response code: ' . $response_code . ')';
             return $stats;
         }
 
