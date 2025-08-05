@@ -1085,8 +1085,15 @@ function df_wc_sendmailsio_sync_customer_to_list($order, $list_uid, $product_id)
         return false;
     }
     
-    // Extract customer data from order
-    $customer_data = df_wc_sendmailsio_extract_customer_data($order);
+    // Get list configuration to see which fields are actually available
+    $list_info = df_wc_sendmailsio_get_list_info($list_uid, $api_endpoint, $api_key);
+    if (!$list_info) {
+        error_log('Woo SendmailsIO: Could not retrieve list info for sync');
+        return false;
+    }
+    
+    // Extract customer data from order, filtered by available list fields
+    $customer_data = df_wc_sendmailsio_extract_customer_data($order, $list_info);
     
     if (!$customer_data['EMAIL']) {
         error_log('Woo SendmailsIO: Missing customer email for sync');
@@ -1107,8 +1114,9 @@ function df_wc_sendmailsio_sync_customer_to_list($order, $list_uid, $product_id)
 
 /**
  * Extract customer data from WooCommerce order and map to SendMails.io fields
+ * Only includes fields that exist in the target SendMails.io list
  */
-function df_wc_sendmailsio_extract_customer_data($order) {
+function df_wc_sendmailsio_extract_customer_data($order, $list_info = null) {
     $customer_data = array();
     
     // Map WooCommerce order data to SendMails.io field tags
@@ -1135,14 +1143,55 @@ function df_wc_sendmailsio_extract_customer_data($order) {
         'SHIPPING_COUNTRY' => $order->get_shipping_country(),
     );
     
-    // Only include fields that have values
+    // Get available field tags from the list if provided
+    $available_tags = array();
+    if ($list_info && isset($list_info['list']['fields']) && is_array($list_info['list']['fields'])) {
+        foreach ($list_info['list']['fields'] as $field) {
+            if (isset($field['tag'])) {
+                $available_tags[] = $field['tag'];
+            }
+        }
+    }
+    
+    // Only include fields that have values AND exist in the target list
     foreach ($field_mapping as $tag => $value) {
         if (!empty($value)) {
+            // If we have list info, only include fields that exist in the list
+            if ($list_info && !in_array($tag, $available_tags)) {
+                continue; // Skip fields that don't exist in the target list
+            }
             $customer_data[$tag] = sanitize_text_field($value);
         }
     }
     
     return $customer_data;
+}
+
+/**
+ * Get list information from SendMails.io API
+ */
+function df_wc_sendmailsio_get_list_info($list_uid, $api_endpoint, $api_key) {
+    $url = trailingslashit($api_endpoint) . 'lists/' . urlencode($list_uid);
+    $url = add_query_arg('api_token', $api_key, $url);
+    
+    $response = wp_remote_get($url, array(
+        'headers' => array('Accept' => 'application/json'),
+        'timeout' => 15,
+    ));
+    
+    if (is_wp_error($response)) {
+        error_log('Woo SendmailsIO: Error getting list info - ' . $response->get_error_message());
+        return false;
+    }
+    
+    $code = wp_remote_retrieve_response_code($response);
+    if ($code === 200) {
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+        return is_array($data) ? $data : false;
+    }
+    
+    return false;
 }
 
 /**
