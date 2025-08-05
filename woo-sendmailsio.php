@@ -22,6 +22,15 @@ function df_wc_sendmailsio_add_admin_menu() {
         'woo-sendmailsio',
         'df_wc_sendmailsio_settings_page'
     );
+    // Hidden submenu page for Product List Mapping (accessible only via tab)
+    add_submenu_page(
+        null,
+        'Product List Mapping',
+        'Product List Mapping',
+        'manage_options',
+        'woo-sendmailsio-product-mapping',
+        'df_wc_sendmailsio_product_mapping_page'
+    );
 }
 /**
  * Handle adding a custom field to a list.
