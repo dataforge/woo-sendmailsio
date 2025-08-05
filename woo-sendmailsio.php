@@ -1184,13 +1184,30 @@ function df_wc_sendmailsio_sync_customer_to_list($order, $list_uid, $product_id)
     // Check if subscriber already exists
     $existing_subscriber = df_wc_sendmailsio_find_subscriber_by_email($customer_data['EMAIL'], $api_endpoint, $api_key);
     
+    $sync_result = false;
     if ($existing_subscriber) {
         // Update existing subscriber
-        return df_wc_sendmailsio_update_subscriber($existing_subscriber['uid'], $customer_data, $list_uid, $api_endpoint, $api_key);
+        $sync_result = df_wc_sendmailsio_update_subscriber($existing_subscriber['uid'], $customer_data, $list_uid, $api_endpoint, $api_key);
     } else {
         // Create new subscriber
-        return df_wc_sendmailsio_create_subscriber($customer_data, $list_uid, $api_endpoint, $api_key);
+        $sync_result = df_wc_sendmailsio_create_subscriber($customer_data, $list_uid, $api_endpoint, $api_key);
     }
+    
+    // Always log a summary of the automatic sync operation
+    $customer_email = $customer_data['EMAIL'];
+    if ($sync_result === true) {
+        $status = $existing_subscriber ? 'updated existing customer' : 'added new customer';
+    } else {
+        $status = 'failed to sync customer';
+    }
+    
+    $summary_message = "Order sync: {$status} {$customer_email}";
+    if (!df_wc_sendmailsio_is_debug_enabled()) {
+        $summary_message .= " - Turn on detailed debug logging in settings for more detail";
+    }
+    error_log('Woo SendmailsIO: ' . $summary_message);
+    
+    return $sync_result;
 }
 
 /**
@@ -1756,6 +1773,13 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         }
 
         $stats['success'] = true;
+        
+        // Always log a summary of the sync operation
+        $summary_message = "Bulk sync completed: Synced {$stats['total']} customers ({$stats['new']} new, {$stats['updated']} updated, {$stats['skipped']} skipped, {$stats['errors']} errors)";
+        if (!df_wc_sendmailsio_is_debug_enabled()) {
+            $summary_message .= " - Turn on detailed debug logging in settings for more detail";
+        }
+        error_log('Woo SendmailsIO: ' . $summary_message);
         
     } catch (Exception $e) {
         $stats['details'][] = 'Exception: ' . $e->getMessage();
