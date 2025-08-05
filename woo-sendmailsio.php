@@ -1450,6 +1450,16 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         $order_ids = wc_get_orders($order_args);
         error_log("Found " . count($order_ids) . " total orders with wc_get_orders");
         
+        // Debug: Check what order statuses actually exist
+        $all_orders = wc_get_orders(array('limit' => 20, 'return' => 'ids'));
+        error_log("Found " . count($all_orders) . " total orders (any status)");
+        foreach (array_slice($all_orders, 0, 5) as $test_order_id) {
+            $test_order = wc_get_order($test_order_id);
+            if ($test_order) {
+                error_log("Order " . $test_order_id . " status: " . $test_order->get_status());
+            }
+        }
+        
         $unique_customers = array();
         $orders_with_product = 0;
 
