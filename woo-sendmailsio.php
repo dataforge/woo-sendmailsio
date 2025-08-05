@@ -406,6 +406,13 @@ function df_wc_sendmailsio_product_mapping_page() {
                                         <select name="sendmailsio_list_uid">
                                             <option value="">-- Select List --</option>
                                             <?php
+                                            // Sort lists alphabetically by name
+                                            usort($lists, function($a, $b) {
+                                                $nameA = isset($a['name']) ? $a['name'] : (isset($a['list_name']) ? $a['list_name'] : '');
+                                                $nameB = isset($b['name']) ? $b['name'] : (isset($b['list_name']) ? $b['list_name'] : '');
+                                                return strcasecmp($nameA, $nameB);
+                                            });
+                                            
                                             foreach ($lists as $list) {
                                                 $uid = isset($list['uid']) ? $list['uid'] : (isset($list['id']) ? $list['id'] : '');
                                                 $name = isset($list['name']) ? $list['name'] : (isset($list['list_name']) ? $list['list_name'] : '');
