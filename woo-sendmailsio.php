@@ -1457,17 +1457,31 @@ function df_wc_sendmailsio_update_existing_subscriber($subscriber_data, $api_end
     $subscriber_uid = $subscriber['id']; // Use 'id' not 'uid' based on the API response
     error_log("Found existing subscriber ID: $subscriber_uid for $email");
     
-    // Remove api_token and list_uid from subscriber data for update
+    // Compare existing data with new data to see if update is needed
     $update_data = array('api_token' => $api_key);
+    $has_changes = false;
     
-    // Only include non-empty fields to avoid overwriting existing data with blanks
+    // Only include non-empty fields and check if they're different
     foreach ($subscriber_data as $key => $value) {
         if ($key !== 'api_token' && $key !== 'list_uid' && $key !== 'EMAIL' && !empty($value)) {
-            $update_data[$key] = $value;
+            $existing_value = isset($subscriber[$key]) ? $subscriber[$key] : null;
+            
+            // Check if the value is different (handle null/empty comparisons)
+            if ($existing_value !== $value && !($existing_value === null && empty($value))) {
+                $update_data[$key] = $value;
+                $has_changes = true;
+                error_log("Field $key changed from '$existing_value' to '$value'");
+            }
         }
     }
     
-    error_log("Update data (non-empty fields only): " . print_r($update_data, true));
+    // If no changes needed, return 'already_exists'
+    if (!$has_changes) {
+        error_log("No changes needed for $email - data is identical");
+        return 'already_exists';
+    }
+    
+    error_log("Update data (changed fields only): " . print_r($update_data, true));
     
     // Update the subscriber
     $update_response = wp_remote_request($api_endpoint . '/subscribers/' . $subscriber_uid, array(
@@ -1699,7 +1713,7 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
                 $stats['created']++;
             } elseif ($sync_result === 'updated') {
                 $stats['updated']++;  
-            } elseif ($sync_result === 'skipped') {
+            } elseif ($sync_result === 'skipped' || $sync_result === 'already_exists') {
                 $stats['skipped']++;
             } else {
                 $stats['errors']++;
