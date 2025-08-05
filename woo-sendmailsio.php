@@ -1373,14 +1373,36 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             return $stats;
         }
 
-        // Get list configuration (which fields are mapped)
-        $list_configs = get_option('df_wc_sendmailsio_list_configs', array());
-        if (!isset($list_configs[$list_uid])) {
-            $stats['details'][] = "No field configuration found for list $list_uid";
+        // Get SendMails.io settings
+        $settings = get_option('df_wc_sendmailsio_settings', array());
+        $api_key = isset($settings['api_key']) ? $settings['api_key'] : '';
+        $api_endpoint = isset($settings['api_endpoint']) ? $settings['api_endpoint'] : 'https://app.sendmails.io/api/v1';
+        
+        if (empty($api_key)) {
+            $stats['details'][] = 'SendMails.io API key not configured';
             return $stats;
         }
 
-        $list_info = $list_configs[$list_uid];
+        // Get list fields from SendMails.io API to determine what fields exist
+        $list_response = wp_remote_get($api_endpoint . '/lists/' . $list_uid, array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key,
+                'Content-Type' => 'application/json'
+            )
+        ));
+
+        if (is_wp_error($list_response)) {
+            $stats['details'][] = 'Failed to fetch list information from SendMails.io';
+            return $stats;
+        }
+
+        $list_data = json_decode(wp_remote_retrieve_body($list_response), true);
+        if (!$list_data || !isset($list_data['data']['fields'])) {
+            $stats['details'][] = 'Invalid list data from SendMails.io';
+            return $stats;
+        }
+
+        $list_info = array('list' => array('fields' => $list_data['data']['fields']));
 
         // Get all orders containing this product (including variations)
         $product = wc_get_product($product_id);
@@ -1438,15 +1460,6 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         if (empty($unique_customers)) {
             $stats['success'] = true;
             $stats['details'][] = 'No customers found who purchased this product';
-            return $stats;
-        }
-
-        // Get SendMails.io settings
-        $settings = get_option('df_wc_sendmailsio_settings', array());
-        $api_key = isset($settings['api_key']) ? $settings['api_key'] : '';
-        
-        if (empty($api_key)) {
-            $stats['details'][] = 'SendMails.io API key not configured';
             return $stats;
         }
 
