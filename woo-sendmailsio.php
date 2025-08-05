@@ -1458,7 +1458,10 @@ function df_wc_sendmailsio_update_existing_subscriber($subscriber_data, $api_end
     error_log("Found existing subscriber ID: $subscriber_uid for $email");
     
     // Compare existing data with new data to see if update is needed
-    $update_data = array('api_token' => $api_key);
+    $update_data = array(
+        'api_token' => $api_key,
+        'EMAIL' => $email  // Always include EMAIL as it's required for updates
+    );
     $has_changes = false;
     
     // Only include non-empty fields and check if they're different
