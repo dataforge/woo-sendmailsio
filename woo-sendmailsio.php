@@ -1355,20 +1355,23 @@ function df_wc_sendmailsio_update_subscriber($subscriber_uid, $customer_data, $l
  * Sync customer data directly to SendMails.io list
  */
 function df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid, $api_key, $api_endpoint) {
-    if (empty($customer_data) || !isset($customer_data['email'])) {
+    if (empty($customer_data) || (!isset($customer_data['email']) && !isset($customer_data['EMAIL']))) {
         return 'No email provided';
     }
+    
+    // Get email - check both lowercase and uppercase versions
+    $email = isset($customer_data['email']) ? $customer_data['email'] : $customer_data['EMAIL'];
 
     // Prepare subscriber data according to SendMails.io API docs
     $subscriber_data = array(
         'api_token' => $api_key,
         'list_uid' => $list_uid,
-        'email' => $customer_data['email']
+        'email' => $email
     );
     
     // Add custom fields directly as parameters
     foreach ($customer_data as $key => $value) {
-        if ($key !== 'email' && !empty($value)) {
+        if ($key !== 'email' && $key !== 'EMAIL' && !empty($value)) {
             $subscriber_data[$key] = $value;
         }
     }
