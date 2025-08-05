@@ -1370,8 +1370,16 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         $product_mappings = get_option('df_wc_sendmailsio_product_mappings', array());
         $list_configs = get_option('df_wc_sendmailsio_list_configs', array());
         
+        // Debug logging
+        error_log("Bulk sync debug - Product ID: $product_id, List UID: $list_uid");
+        error_log("Product mappings: " . print_r($product_mappings, true));
+        error_log("List configs: " . print_r($list_configs, true));
+        
         if (!isset($product_mappings[$product_id]) || !isset($list_configs[$list_uid])) {
-            $stats['details'][] = 'Product not mapped or list configuration missing';
+            $missing = array();
+            if (!isset($product_mappings[$product_id])) $missing[] = "product mapping for ID $product_id";
+            if (!isset($list_configs[$list_uid])) $missing[] = "list config for UID $list_uid";
+            $stats['details'][] = 'Missing: ' . implode(', ', $missing);
             return $stats;
         }
 
