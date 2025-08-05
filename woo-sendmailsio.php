@@ -1047,3 +1047,207 @@ function df_wc_sendmailsio_ajax_get_sample_customer() {
         wp_send_json_error('No sample customers found.');
     }
 }
+
+// Hook into WooCommerce order events for automatic customer sync
+add_action('woocommerce_order_status_completed', 'df_wc_sendmailsio_sync_order_customers');
+add_action('woocommerce_order_status_processing', 'df_wc_sendmailsio_sync_order_customers');
+
+/**
+ * Sync customers to SendMails.io when order is completed/processing
+ */
+function df_wc_sendmailsio_sync_order_customers($order_id) {
+    $order = wc_get_order($order_id);
+    if (!$order) return;
+    
+    // Get all items in the order
+    foreach ($order->get_items() as $item_id => $item) {
+        $product_id = $item->get_product_id();
+        $variation_id = $item->get_variation_id();
+        
+        // Check if product (or its parent if variation) has a mapped list
+        $list_uid = get_post_meta($product_id, '_sendmailsio_list_uid', true);
+        
+        if ($list_uid) {
+            df_wc_sendmailsio_sync_customer_to_list($order, $list_uid, $product_id);
+        }
+    }
+}
+
+/**
+ * Sync a customer to a specific SendMails.io list
+ */
+function df_wc_sendmailsio_sync_customer_to_list($order, $list_uid, $product_id) {
+    $api_key = get_option('df_wc_sendmailsio_api_key', '');
+    $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
+    
+    if (!$api_key || !$list_uid) {
+        error_log('Woo SendmailsIO: Missing API key or list UID for sync');
+        return false;
+    }
+    
+    // Extract customer data from order
+    $customer_data = df_wc_sendmailsio_extract_customer_data($order);
+    
+    if (!$customer_data['EMAIL']) {
+        error_log('Woo SendmailsIO: Missing customer email for sync');
+        return false;
+    }
+    
+    // Check if subscriber already exists
+    $existing_subscriber = df_wc_sendmailsio_find_subscriber_by_email($customer_data['EMAIL'], $api_endpoint, $api_key);
+    
+    if ($existing_subscriber) {
+        // Update existing subscriber
+        return df_wc_sendmailsio_update_subscriber($existing_subscriber['uid'], $customer_data, $list_uid, $api_endpoint, $api_key);
+    } else {
+        // Create new subscriber
+        return df_wc_sendmailsio_create_subscriber($customer_data, $list_uid, $api_endpoint, $api_key);
+    }
+}
+
+/**
+ * Extract customer data from WooCommerce order and map to SendMails.io fields
+ */
+function df_wc_sendmailsio_extract_customer_data($order) {
+    $customer_data = array();
+    
+    // Map WooCommerce order data to SendMails.io field tags
+    $field_mapping = array(
+        'EMAIL' => $order->get_billing_email(),
+        'FIRST_NAME' => $order->get_billing_first_name(),
+        'LAST_NAME' => $order->get_billing_last_name(),
+        'PHONE' => $order->get_billing_phone(),
+        'BILLING_COMPANY' => $order->get_billing_company(),
+        'BILLING_ADDRESS_1' => $order->get_billing_address_1(),
+        'BILLING_ADDRESS_2' => $order->get_billing_address_2(),
+        'BILLING_CITY' => $order->get_billing_city(),
+        'BILLING_STATE' => $order->get_billing_state(),
+        'BILLING_POSTCODE' => $order->get_billing_postcode(),
+        'BILLING_COUNTRY' => $order->get_billing_country(),
+        'SHIPPING_FIRST_NAME' => $order->get_shipping_first_name(),
+        'SHIPPING_LAST_NAME' => $order->get_shipping_last_name(),
+        'SHIPPING_COMPANY' => $order->get_shipping_company(),
+        'SHIPPING_ADDRESS_1' => $order->get_shipping_address_1(),
+        'SHIPPING_ADDRESS_2' => $order->get_shipping_address_2(),
+        'SHIPPING_CITY' => $order->get_shipping_city(),
+        'SHIPPING_STATE' => $order->get_shipping_state(),
+        'SHIPPING_POSTCODE' => $order->get_shipping_postcode(),
+        'SHIPPING_COUNTRY' => $order->get_shipping_country(),
+    );
+    
+    // Only include fields that have values
+    foreach ($field_mapping as $tag => $value) {
+        if (!empty($value)) {
+            $customer_data[$tag] = sanitize_text_field($value);
+        }
+    }
+    
+    return $customer_data;
+}
+
+/**
+ * Find subscriber by email using SendMails.io API
+ */
+function df_wc_sendmailsio_find_subscriber_by_email($email, $api_endpoint, $api_key) {
+    $url = trailingslashit($api_endpoint) . 'subscribers/email/' . urlencode($email);
+    $url = add_query_arg('api_token', $api_key, $url);
+    
+    $response = wp_remote_get($url, array(
+        'headers' => array('Accept' => 'application/json'),
+        'timeout' => 15,
+    ));
+    
+    if (is_wp_error($response)) {
+        error_log('Woo SendmailsIO: Error finding subscriber - ' . $response->get_error_message());
+        return false;
+    }
+    
+    $code = wp_remote_retrieve_response_code($response);
+    if ($code === 200) {
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+        return is_array($data) ? $data : false;
+    }
+    
+    return false;
+}
+
+/**
+ * Create new subscriber in SendMails.io
+ */
+function df_wc_sendmailsio_create_subscriber($customer_data, $list_uid, $api_endpoint, $api_key) {
+    $url = trailingslashit($api_endpoint) . 'subscribers';
+    $url = add_query_arg('api_token', $api_key, $url);
+    
+    // Prepare subscriber data
+    $subscriber_data = array(
+        'list_uid' => $list_uid,
+        'EMAIL' => $customer_data['EMAIL'],
+    );
+    
+    // Add other customer data fields
+    foreach ($customer_data as $field_tag => $value) {
+        if ($field_tag !== 'EMAIL' && !empty($value)) {
+            $subscriber_data[$field_tag] = $value;
+        }
+    }
+    
+    $response = wp_remote_post($url, array(
+        'headers' => array('Accept' => 'application/json'),
+        'body' => $subscriber_data,
+        'timeout' => 15,
+    ));
+    
+    if (is_wp_error($response)) {
+        error_log('Woo SendmailsIO: Error creating subscriber - ' . $response->get_error_message());
+        return false;
+    }
+    
+    $code = wp_remote_retrieve_response_code($response);
+    if ($code === 200 || $code === 201) {
+        error_log('Woo SendmailsIO: Successfully created subscriber - ' . $customer_data['EMAIL']);
+        return true;
+    } else {
+        $body = wp_remote_retrieve_body($response);
+        error_log('Woo SendmailsIO: Failed to create subscriber - ' . $body);
+        return false;
+    }
+}
+
+/**
+ * Update existing subscriber in SendMails.io
+ */
+function df_wc_sendmailsio_update_subscriber($subscriber_uid, $customer_data, $list_uid, $api_endpoint, $api_key) {
+    $url = trailingslashit($api_endpoint) . 'subscribers/' . urlencode($subscriber_uid);
+    $url = add_query_arg('api_token', $api_key, $url);
+    
+    // Prepare update data (only non-empty fields)
+    $update_data = array();
+    foreach ($customer_data as $field_tag => $value) {
+        if (!empty($value)) {
+            $update_data[$field_tag] = $value;
+        }
+    }
+    
+    $response = wp_remote_request($url, array(
+        'method' => 'PATCH',
+        'headers' => array('Accept' => 'application/json'),
+        'body' => $update_data,
+        'timeout' => 15,
+    ));
+    
+    if (is_wp_error($response)) {
+        error_log('Woo SendmailsIO: Error updating subscriber - ' . $response->get_error_message());
+        return false;
+    }
+    
+    $code = wp_remote_retrieve_response_code($response);
+    if ($code === 200) {
+        error_log('Woo SendmailsIO: Successfully updated subscriber - ' . $customer_data['EMAIL']);
+        return true;
+    } else {
+        $body = wp_remote_retrieve_body($response);
+        error_log('Woo SendmailsIO: Failed to update subscriber - ' . $body);
+        return false;
+    }
+}
