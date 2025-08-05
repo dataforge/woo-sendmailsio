@@ -1458,10 +1458,16 @@ function df_wc_sendmailsio_update_existing_subscriber($subscriber_data, $api_end
     error_log("Found existing subscriber ID: $subscriber_uid for $email");
     
     // Remove api_token and list_uid from subscriber data for update
-    $update_data = $subscriber_data;
-    unset($update_data['api_token']);
-    unset($update_data['list_uid']);
-    $update_data['api_token'] = $api_key; // Re-add just the api_token
+    $update_data = array('api_token' => $api_key);
+    
+    // Only include non-empty fields to avoid overwriting existing data with blanks
+    foreach ($subscriber_data as $key => $value) {
+        if ($key !== 'api_token' && $key !== 'list_uid' && $key !== 'EMAIL' && !empty($value)) {
+            $update_data[$key] = $value;
+        }
+    }
+    
+    error_log("Update data (non-empty fields only): " . print_r($update_data, true));
     
     // Update the subscriber
     $update_response = wp_remote_request($api_endpoint . '/subscribers/' . $subscriber_uid, array(
