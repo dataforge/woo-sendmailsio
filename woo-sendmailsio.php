@@ -1407,7 +1407,9 @@ function df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid,
         // Check if it's an "already exists" error
         $response_data = json_decode($response_body, true);
         if (isset($response_data['EMAIL'][0]) && strpos($response_data['EMAIL'][0], 'already been taken') !== false) {
-            return 'skipped'; // Already exists
+            // Try to find and update the existing subscriber
+            error_log("Subscriber already exists, attempting to update: " . $email);
+            return df_wc_sendmailsio_update_existing_subscriber($subscriber_data, $api_endpoint, $api_key);
         } else {
             error_log("SendMails.io API error (code $response_code): " . $response_body);
             return "API error (code $response_code): " . substr($response_body, 0, 100);
@@ -1415,6 +1417,74 @@ function df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid,
     } else {
         error_log("SendMails.io API error (code $response_code): " . $response_body);
         return "API error (code $response_code): " . substr($response_body, 0, 100);
+    }
+}
+
+/**
+ * Find and update existing subscriber in SendMails.io
+ */
+function df_wc_sendmailsio_update_existing_subscriber($subscriber_data, $api_endpoint, $api_key) {
+    $email = $subscriber_data['EMAIL'];
+    
+    // First, find the subscriber by email
+    $find_response = wp_remote_get($api_endpoint . '/subscribers/email/' . urlencode($email) . '?api_token=' . $api_key, array(
+        'headers' => array(
+            'Accept' => 'application/json'
+        )
+    ));
+    
+    if (is_wp_error($find_response)) {
+        error_log('Error finding subscriber: ' . $find_response->get_error_message());
+        return 'skipped'; // Can't find subscriber, skip update
+    }
+    
+    $find_code = wp_remote_retrieve_response_code($find_response);
+    $find_body = wp_remote_retrieve_body($find_response);
+    
+    if ($find_code !== 200) {
+        error_log("Can't find subscriber $email (code $find_code): " . $find_body);
+        return 'skipped';
+    }
+    
+    $find_data = json_decode($find_body, true);
+    if (!isset($find_data['subscriber']['uid'])) {
+        error_log("Invalid subscriber data for $email: " . $find_body);
+        return 'skipped';
+    }
+    
+    $subscriber_uid = $find_data['subscriber']['uid'];
+    error_log("Found existing subscriber UID: $subscriber_uid for $email");
+    
+    // Remove api_token and list_uid from subscriber data for update
+    $update_data = $subscriber_data;
+    unset($update_data['api_token']);
+    unset($update_data['list_uid']);
+    $update_data['api_token'] = $api_key; // Re-add just the api_token
+    
+    // Update the subscriber
+    $update_response = wp_remote_request($api_endpoint . '/subscribers/' . $subscriber_uid, array(
+        'method' => 'PATCH',
+        'headers' => array(
+            'Accept' => 'application/json'
+        ),
+        'body' => $update_data
+    ));
+    
+    if (is_wp_error($update_response)) {
+        error_log('Error updating subscriber: ' . $update_response->get_error_message());
+        return 'Error updating subscriber';
+    }
+    
+    $update_code = wp_remote_retrieve_response_code($update_response);
+    $update_body = wp_remote_retrieve_body($update_response);
+    
+    error_log("Update subscriber response (code $update_code): " . substr($update_body, 0, 200));
+    
+    if ($update_code === 200) {
+        return 'updated';
+    } else {
+        error_log("Error updating subscriber $email (code $update_code): " . $update_body);
+        return 'Error updating subscriber';
     }
 }
 
