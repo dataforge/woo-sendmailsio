@@ -1439,28 +1439,23 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         }
 
         // Build query args to find orders with this product
-        $args = array(
-            'post_type' => 'shop_order',
-            'post_status' => array('wc-completed', 'wc-processing'),
-            'posts_per_page' => -1,
-            'meta_query' => array(
-                array(
-                    'key' => '_customer_user',
-                    'compare' => 'EXISTS'
-                )
-            )
+        // Use WooCommerce function to get orders instead of get_posts for better compatibility
+        $order_args = array(
+            'status' => array('completed', 'processing'),
+            'limit' => -1,
+            'return' => 'ids'
         );
-
-        error_log("Searching for orders with status: " . implode(', ', $args['post_status']));
-        $orders = get_posts($args);
-        error_log("Found " . count($orders) . " total orders");
+        
+        error_log("Searching for orders with WC status: " . implode(', ', $order_args['status']));
+        $order_ids = wc_get_orders($order_args);
+        error_log("Found " . count($order_ids) . " total orders with wc_get_orders");
         
         $unique_customers = array();
         $orders_with_product = 0;
 
         // Find orders containing our product
-        foreach ($orders as $order_post) {
-            $order = wc_get_order($order_post->ID);
+        foreach ($order_ids as $order_id) {
+            $order = wc_get_order($order_id);
             if (!$order) continue;
 
             $has_product = false;
