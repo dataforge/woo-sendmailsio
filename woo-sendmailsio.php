@@ -1447,13 +1447,15 @@ function df_wc_sendmailsio_update_existing_subscriber($subscriber_data, $api_end
     }
     
     $find_data = json_decode($find_body, true);
-    if (!isset($find_data['subscriber']['uid'])) {
-        error_log("Invalid subscriber data for $email: " . $find_body);
+    if (!isset($find_data['subscribers']) || empty($find_data['subscribers'])) {
+        error_log("No subscribers found for $email: " . $find_body);
         return 'skipped';
     }
     
-    $subscriber_uid = $find_data['subscriber']['uid'];
-    error_log("Found existing subscriber UID: $subscriber_uid for $email");
+    // Get the first subscriber (there could be multiple if they're in different lists)
+    $subscriber = $find_data['subscribers'][0];
+    $subscriber_uid = $subscriber['id']; // Use 'id' not 'uid' based on the API response
+    error_log("Found existing subscriber ID: $subscriber_uid for $email");
     
     // Remove api_token and list_uid from subscriber data for update
     $update_data = $subscriber_data;
