@@ -468,7 +468,6 @@ function df_wc_sendmailsio_product_mapping_page() {
                                         </form>
                                         <!-- List Fields section will be rendered after list creation -->
                                     </details>
-                                    <?php endif; ?>
                                     <div id="list-fields-<?php echo esc_attr($product_id); ?>" style="display:none;">
                                     <?php
                                     // Show List Fields section - now loaded via JavaScript
