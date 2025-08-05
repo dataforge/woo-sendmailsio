@@ -1366,7 +1366,7 @@ function df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid,
     $subscriber_data = array(
         'api_token' => $api_key,
         'list_uid' => $list_uid,
-        'email' => $email
+        'EMAIL' => $email  // Use uppercase EMAIL as that's what the API expects
     );
     
     // Add custom fields directly as parameters
