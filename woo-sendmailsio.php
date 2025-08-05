@@ -1504,15 +1504,8 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         $order_ids = wc_get_orders($order_args);
         error_log("Found " . count($order_ids) . " total orders with wc_get_orders");
         
-        // Debug: Check what order statuses actually exist
-        $all_orders = wc_get_orders(array('limit' => 20, 'return' => 'ids'));
-        error_log("Found " . count($all_orders) . " total orders (any status)");
-        foreach (array_slice($all_orders, 0, 5) as $test_order_id) {
-            $test_order = wc_get_order($test_order_id);
-            if ($test_order) {
-                error_log("Order " . $test_order_id . " status: " . $test_order->get_status());
-            }
-        }
+        // Simplified debug logging
+        error_log("Found " . count($order_ids) . " orders to process for product $product_id");
         
         $unique_customers = array();
         $orders_with_product = 0;
@@ -1543,12 +1536,6 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
                 $customer_email = $order->get_billing_email();
                 if ($customer_email && !in_array($customer_email, $unique_customers)) {
                     $unique_customers[] = $customer_email;
-                }
-                error_log("Order " . $order->get_id() . " contains product $product_id, customer: " . $customer_email);
-            } else {
-                // Log first few orders that don't match to see what products they contain
-                if ($orders_with_product < 5) {
-                    error_log("Order " . $order->get_id() . " does not contain product $product_id. Contains: " . implode('; ', $order_products));
                 }
             }
         }
