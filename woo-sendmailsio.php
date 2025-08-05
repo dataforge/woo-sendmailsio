@@ -1359,25 +1359,26 @@ function df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid,
         return 'No email provided';
     }
 
-    // Prepare subscriber data
+    // Prepare subscriber data according to SendMails.io API docs
     $subscriber_data = array(
+        'api_token' => $api_key,
+        'list_uid' => $list_uid,
         'email' => $customer_data['email']
     );
     
-    // Add custom fields
+    // Add custom fields directly as parameters
     foreach ($customer_data as $key => $value) {
         if ($key !== 'email' && !empty($value)) {
-            $subscriber_data['fields'][$key] = $value;
+            $subscriber_data[$key] = $value;
         }
     }
 
-    // API call to create/update subscriber
-    $response = wp_remote_post($api_endpoint . '/lists/' . $list_uid . '/subscribers', array(
+    // API call to create/update subscriber using correct endpoint
+    $response = wp_remote_post($api_endpoint . '/subscribers', array(
         'headers' => array(
-            'Authorization' => 'Bearer ' . $api_key,
-            'Content-Type' => 'application/json'
+            'Accept' => 'application/json'
         ),
-        'body' => json_encode($subscriber_data),
+        'body' => $subscriber_data,
         'timeout' => 30
     ));
 
@@ -1388,16 +1389,19 @@ function df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid,
 
     $response_code = wp_remote_retrieve_response_code($response);
     $response_body = wp_remote_retrieve_body($response);
+    
+    error_log("SendMails.io subscriber API response (code $response_code): " . substr($response_body, 0, 200));
 
-    if ($response_code === 201) {
-        return true; // Created
-    } elseif ($response_code === 200) {
-        return 'updated'; // Updated
-    } elseif ($response_code === 409) {
-        return 'skipped'; // Already exists
+    if ($response_code === 200 || $response_code === 201) {
+        $response_data = json_decode($response_body, true);
+        if (isset($response_data['message']) && strpos($response_data['message'], 'created') !== false) {
+            return true; // Created
+        } else {
+            return 'updated'; // Updated or already exists
+        }
     } else {
         error_log("SendMails.io API error (code $response_code): " . $response_body);
-        return "API error (code $response_code)";
+        return "API error (code $response_code): " . substr($response_body, 0, 100);
     }
 }
 
@@ -1441,11 +1445,11 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         error_log("API key check passed, proceeding with list fetch");
 
         // Get list fields from SendMails.io API to determine what fields exist
-        error_log("Fetching list fields from: " . $api_endpoint . '/lists/' . $list_uid);
-        $list_response = wp_remote_get($api_endpoint . '/lists/' . $list_uid, array(
+        $list_api_url = $api_endpoint . '/lists/' . $list_uid . '?api_token=' . $api_key;
+        error_log("Fetching list fields from: " . $list_api_url);
+        $list_response = wp_remote_get($list_api_url, array(
             'headers' => array(
-                'Authorization' => 'Bearer ' . $api_key,
-                'Content-Type' => 'application/json'
+                'Accept' => 'application/json'
             )
         ));
 
