@@ -1565,11 +1565,8 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             $sync_count++;
             error_log("Syncing customer $sync_count/" . count($unique_customers) . ": $customer_email");
             
-            // Test: Skip the customer order lookup to see if that's the problem
-            error_log("About to look up orders for $customer_email");
-            continue; // Skip the rest for testing
-            
             // Find the most recent order for this customer with this product
+            error_log("Looking up orders for $customer_email");
             $customer_orders = wc_get_orders(array(
                 'billing_email' => $customer_email,
                 'status' => array('completed', 'processing'),
