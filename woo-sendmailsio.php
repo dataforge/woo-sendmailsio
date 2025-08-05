@@ -19,16 +19,8 @@ function df_wc_sendmailsio_add_admin_menu() {
         'Woo SendmailsIO',
         'Woo SendmailsIO',
         'manage_options',
-        'df-wc-sendmailsio',
+        'woo-sendmailsio',
         'df_wc_sendmailsio_settings_page'
-    );
-    add_submenu_page(
-        'woocommerce',
-        'Product List Mapping',
-        'Product List Mapping',
-        'read', // all logged-in users
-        'df-wc-sendmailsio-product-mapping',
-        'df_wc_sendmailsio_product_mapping_page'
     );
 }
 /**
@@ -39,8 +31,8 @@ function df_wc_sendmailsio_settings_page() {
     <div class="wrap">
         <h1>Woo SendmailsIO</h1>
         <h2 class="nav-tab-wrapper">
+            <a href="<?php echo admin_url('admin.php?page=woo-sendmailsio-product-mapping'); ?>" class="nav-tab">Product List Mapping</a>
             <a href="#" class="nav-tab nav-tab-active">Settings</a>
-            <a href="<?php echo admin_url('admin.php?page=df-wc-sendmailsio-product-mapping'); ?>" class="nav-tab">Product List Mapping</a>
         </h2>
         <?php df_wc_sendmailsio_settings_form(); ?>
     </div>
@@ -194,7 +186,7 @@ function df_wc_sendmailsio_handle_create_list() {
                     if ($new_uid) {
                         update_post_meta($product_id, '_sendmailsio_list_uid', $new_uid);
                         // Redirect to refresh the page and show the new mapping in the Current List column
-                        wp_safe_redirect(add_query_arg(array('page' => 'df-wc-sendmailsio-product-mapping'), admin_url('admin.php')));
+                        wp_safe_redirect(add_query_arg(array('page' => 'woo-sendmailsio-product-mapping'), admin_url('admin.php')));
                         exit;
                     } elseif ($success_message) {
                         echo '<div class="notice notice-success"><p>' . esc_html($success_message) . '</p></div>';
