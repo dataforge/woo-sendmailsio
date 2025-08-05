@@ -1390,7 +1390,8 @@ function df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid,
     $response_code = wp_remote_retrieve_response_code($response);
     $response_body = wp_remote_retrieve_body($response);
     
-    error_log("SendMails.io subscriber API response (code $response_code): " . substr($response_body, 0, 200));
+    error_log("SendMails.io subscriber API response (code $response_code): " . substr($response_body, 0, 500));
+    error_log("Subscriber data sent: " . print_r($subscriber_data, true));
 
     if ($response_code === 200 || $response_code === 201) {
         $response_data = json_decode($response_body, true);
