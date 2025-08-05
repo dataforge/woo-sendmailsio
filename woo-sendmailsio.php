@@ -1568,6 +1568,7 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
     $stats = array(
         'success' => false,
         'total' => 0,
+        'new' => 0,
         'created' => 0,
         'updated' => 0,
         'skipped' => 0,
@@ -1761,7 +1762,7 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             df_wc_sendmailsio_debug_log("Sync result for $customer_email: $sync_result");
             
             if ($sync_result === true) {
-                $stats['created']++;
+                $stats['new']++;
             } elseif ($sync_result === 'updated') {
                 $stats['updated']++;  
             } elseif ($sync_result === 'skipped' || $sync_result === 'already_exists') {
