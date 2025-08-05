@@ -540,10 +540,28 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                     $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
                                                     $added = array();
                                                     $errors = array();
+                                                    $skipped = array();
                                                     if ($api_key && $list_uid && !empty($_POST['wc_fields'])) {
                                                         foreach ($_POST['wc_fields'] as $field_key) {
                                                             if (!isset($wc_fields[$field_key])) continue;
                                                             $f = $wc_fields[$field_key];
+                                                            
+                                                            // Check if field already exists in the list
+                                                            $field_already_exists = false;
+                                                            if (isset($list_info['list']['fields']) && is_array($list_info['list']['fields'])) {
+                                                                foreach ($list_info['list']['fields'] as $existing_field) {
+                                                                    if (isset($existing_field['tag']) && $existing_field['tag'] === $f['tag']) {
+                                                                        $field_already_exists = true;
+                                                                        break;
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            // Skip if field already exists
+                                                            if ($field_already_exists) {
+                                                                $skipped[] = $f['label'];
+                                                                continue;
+                                                            }
                                                             $field_data = array(
                                                                 'type' => $f['type'],
                                                                 'label' => $f['label'],
@@ -569,6 +587,9 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         }
                                                         if ($errors) {
                                                             echo '<div class="notice notice-error"><p>Failed: ' . esc_html(implode(', ', $errors)) . '</p></div>';
+                                                        }
+                                                        if ($skipped) {
+                                                            echo '<div class="notice notice-info"><p>Skipped (already exist): ' . esc_html(implode(', ', $skipped)) . '</p></div>';
                                                         }
                                                     }
                                                 }
@@ -714,7 +735,8 @@ function df_wc_sendmailsio_product_mapping_page() {
                                                         <?php endforeach; ?>
                                                         </tbody>
                                                     </table>
-                                                    <input type="submit" name="df_wc_sendmailsio_add_wc_fields" class="button" value="Add Selected Fields" style="margin-top:8px;" />
+                                                    <input type="submit" name="df_wc_sendmailsio_add_wc_fields" class="button" value="Add New Selected Fields" style="margin-top:8px;" />
+                                                    <p style="font-size:12px;color:#666;margin-top:8px;"><strong>Note:</strong> Fields that already exist in the list cannot be removed via this interface. Unchecking existing fields will not delete them from your SendMails.io list.</p>
                                                 </form>
                                                 <script>
                                                 function dfWcSendmailsioToggleOptions(type) {
