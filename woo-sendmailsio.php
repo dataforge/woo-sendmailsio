@@ -1352,6 +1352,56 @@ function df_wc_sendmailsio_update_subscriber($subscriber_uid, $customer_data, $l
 }
 
 /**
+ * Sync customer data directly to SendMails.io list
+ */
+function df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid, $api_key, $api_endpoint) {
+    if (empty($customer_data) || !isset($customer_data['email'])) {
+        return 'No email provided';
+    }
+
+    // Prepare subscriber data
+    $subscriber_data = array(
+        'email' => $customer_data['email']
+    );
+    
+    // Add custom fields
+    foreach ($customer_data as $key => $value) {
+        if ($key !== 'email' && !empty($value)) {
+            $subscriber_data['fields'][$key] = $value;
+        }
+    }
+
+    // API call to create/update subscriber
+    $response = wp_remote_post($api_endpoint . '/lists/' . $list_uid . '/subscribers', array(
+        'headers' => array(
+            'Authorization' => 'Bearer ' . $api_key,
+            'Content-Type' => 'application/json'
+        ),
+        'body' => json_encode($subscriber_data),
+        'timeout' => 30
+    ));
+
+    if (is_wp_error($response)) {
+        error_log('SendMails.io API error: ' . $response->get_error_message());
+        return 'API error: ' . $response->get_error_message();
+    }
+
+    $response_code = wp_remote_retrieve_response_code($response);
+    $response_body = wp_remote_retrieve_body($response);
+
+    if ($response_code === 201) {
+        return true; // Created
+    } elseif ($response_code === 200) {
+        return 'updated'; // Updated
+    } elseif ($response_code === 409) {
+        return 'skipped'; // Already exists
+    } else {
+        error_log("SendMails.io API error (code $response_code): " . $response_body);
+        return "API error (code $response_code)";
+    }
+}
+
+/**
  * Bulk sync customers who previously purchased a specific product
  */
 function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
@@ -1545,8 +1595,8 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
                 continue;
             }
 
-            // Sync to SendMails.io
-            $sync_result = df_wc_sendmailsio_sync_customer_to_list($customer_data, $list_uid, $api_key);
+            // Sync to SendMails.io using direct API call
+            $sync_result = df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid, $api_key, $api_endpoint);
             
             if ($sync_result === true) {
                 $stats['created']++;
