@@ -1403,6 +1403,15 @@ function df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid,
         } else {
             return 'updated'; // Updated or already exists
         }
+    } elseif ($response_code === 403) {
+        // Check if it's an "already exists" error
+        $response_data = json_decode($response_body, true);
+        if (isset($response_data['EMAIL'][0]) && strpos($response_data['EMAIL'][0], 'already been taken') !== false) {
+            return 'skipped'; // Already exists
+        } else {
+            error_log("SendMails.io API error (code $response_code): " . $response_body);
+            return "API error (code $response_code): " . substr($response_body, 0, 100);
+        }
     } else {
         error_log("SendMails.io API error (code $response_code): " . $response_body);
         return "API error (code $response_code): " . substr($response_body, 0, 100);
@@ -1556,10 +1565,9 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             return $stats;
         }
 
-        // Limit to 5 customers for testing to avoid timeouts
-        $unique_customers = array_slice($unique_customers, 0, 5);
+        // Process all customers now that sync is working
         $stats['total'] = count($unique_customers);
-        error_log("Starting sync process for " . count($unique_customers) . " customers (limited for testing)");
+        error_log("Starting sync process for " . count($unique_customers) . " customers");
 
         // Set time limit to prevent timeouts
         set_time_limit(120);
