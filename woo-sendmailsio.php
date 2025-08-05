@@ -1162,14 +1162,14 @@ function df_wc_sendmailsio_sync_customer_to_list($order, $list_uid, $product_id)
     $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
     
     if (!$api_key || !$list_uid) {
-        error_log('Woo SendmailsIO: Missing API key or list UID for sync');
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Missing API key or list UID for sync');
         return false;
     }
     
     // Get list configuration to see which fields are actually available
     $list_info = df_wc_sendmailsio_get_list_info($list_uid, $api_endpoint, $api_key);
     if (!$list_info) {
-        error_log('Woo SendmailsIO: Could not retrieve list info for sync');
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Could not retrieve list info for sync');
         return false;
     }
     
@@ -1177,7 +1177,7 @@ function df_wc_sendmailsio_sync_customer_to_list($order, $list_uid, $product_id)
     $customer_data = df_wc_sendmailsio_extract_customer_data($order, $list_info);
     
     if (!$customer_data['EMAIL']) {
-        error_log('Woo SendmailsIO: Missing customer email for sync');
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Missing customer email for sync');
         return false;
     }
     
@@ -1261,7 +1261,7 @@ function df_wc_sendmailsio_get_list_info($list_uid, $api_endpoint, $api_key) {
     ));
     
     if (is_wp_error($response)) {
-        error_log('Woo SendmailsIO: Error getting list info - ' . $response->get_error_message());
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Error getting list info - ' . $response->get_error_message());
         return false;
     }
     
@@ -1288,7 +1288,7 @@ function df_wc_sendmailsio_find_subscriber_by_email($email, $api_endpoint, $api_
     ));
     
     if (is_wp_error($response)) {
-        error_log('Woo SendmailsIO: Error finding subscriber - ' . $response->get_error_message());
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Error finding subscriber - ' . $response->get_error_message());
         return false;
     }
     
@@ -1329,17 +1329,17 @@ function df_wc_sendmailsio_create_subscriber($customer_data, $list_uid, $api_end
     ));
     
     if (is_wp_error($response)) {
-        error_log('Woo SendmailsIO: Error creating subscriber - ' . $response->get_error_message());
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Error creating subscriber - ' . $response->get_error_message());
         return false;
     }
     
     $code = wp_remote_retrieve_response_code($response);
     if ($code === 200 || $code === 201) {
-        error_log('Woo SendmailsIO: Successfully created subscriber - ' . $customer_data['EMAIL']);
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Successfully created subscriber - ' . $customer_data['EMAIL']);
         return true;
     } else {
         $body = wp_remote_retrieve_body($response);
-        error_log('Woo SendmailsIO: Failed to create subscriber - ' . $body);
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Failed to create subscriber - ' . $body);
         return false;
     }
 }
@@ -1367,17 +1367,17 @@ function df_wc_sendmailsio_update_subscriber($subscriber_uid, $customer_data, $l
     ));
     
     if (is_wp_error($response)) {
-        error_log('Woo SendmailsIO: Error updating subscriber - ' . $response->get_error_message());
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Error updating subscriber - ' . $response->get_error_message());
         return false;
     }
     
     $code = wp_remote_retrieve_response_code($response);
     if ($code === 200) {
-        error_log('Woo SendmailsIO: Successfully updated subscriber - ' . $customer_data['EMAIL']);
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Successfully updated subscriber - ' . $customer_data['EMAIL']);
         return true;
     } else {
         $body = wp_remote_retrieve_body($response);
-        error_log('Woo SendmailsIO: Failed to update subscriber - ' . $body);
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Failed to update subscriber - ' . $body);
         return false;
     }
 }
@@ -1417,15 +1417,15 @@ function df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid,
     ));
 
     if (is_wp_error($response)) {
-        error_log('SendMails.io API error: ' . $response->get_error_message());
+        df_wc_sendmailsio_debug_log('SendMails.io API error: ' . $response->get_error_message());
         return 'API error: ' . $response->get_error_message();
     }
 
     $response_code = wp_remote_retrieve_response_code($response);
     $response_body = wp_remote_retrieve_body($response);
     
-    error_log("SendMails.io subscriber API response (code $response_code): " . substr($response_body, 0, 500));
-    error_log("Subscriber data sent: " . print_r($subscriber_data, true));
+    df_wc_sendmailsio_debug_log("SendMails.io subscriber API response (code $response_code): " . substr($response_body, 0, 500));
+    df_wc_sendmailsio_debug_log("Subscriber data sent: " . print_r($subscriber_data, true));
 
     if ($response_code === 200 || $response_code === 201) {
         $response_data = json_decode($response_body, true);
@@ -1439,14 +1439,14 @@ function df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid,
         $response_data = json_decode($response_body, true);
         if (isset($response_data['EMAIL'][0]) && strpos($response_data['EMAIL'][0], 'already been taken') !== false) {
             // Try to find and update the existing subscriber
-            error_log("Subscriber already exists, attempting to update: " . $email);
+            df_wc_sendmailsio_debug_log("Subscriber already exists, attempting to update: " . $email);
             return df_wc_sendmailsio_update_existing_subscriber($subscriber_data, $api_endpoint, $api_key);
         } else {
-            error_log("SendMails.io API error (code $response_code): " . $response_body);
+            df_wc_sendmailsio_debug_log("SendMails.io API error (code $response_code): " . $response_body);
             return "API error (code $response_code): " . substr($response_body, 0, 100);
         }
     } else {
-        error_log("SendMails.io API error (code $response_code): " . $response_body);
+        df_wc_sendmailsio_debug_log("SendMails.io API error (code $response_code): " . $response_body);
         return "API error (code $response_code): " . substr($response_body, 0, 100);
     }
 }
@@ -1465,7 +1465,7 @@ function df_wc_sendmailsio_update_existing_subscriber($subscriber_data, $api_end
     ));
     
     if (is_wp_error($find_response)) {
-        error_log('Error finding subscriber: ' . $find_response->get_error_message());
+        df_wc_sendmailsio_debug_log('Error finding subscriber: ' . $find_response->get_error_message());
         return 'skipped'; // Can't find subscriber, skip update
     }
     
@@ -1473,20 +1473,20 @@ function df_wc_sendmailsio_update_existing_subscriber($subscriber_data, $api_end
     $find_body = wp_remote_retrieve_body($find_response);
     
     if ($find_code !== 200) {
-        error_log("Can't find subscriber $email (code $find_code): " . $find_body);
+        df_wc_sendmailsio_debug_log("Can't find subscriber $email (code $find_code): " . $find_body);
         return 'skipped';
     }
     
     $find_data = json_decode($find_body, true);
     if (!isset($find_data['subscribers']) || empty($find_data['subscribers'])) {
-        error_log("No subscribers found for $email: " . $find_body);
+        df_wc_sendmailsio_debug_log("No subscribers found for $email: " . $find_body);
         return 'skipped';
     }
     
     // Get the first subscriber (there could be multiple if they're in different lists)
     $subscriber = $find_data['subscribers'][0];
     $subscriber_uid = $subscriber['id']; // Use 'id' not 'uid' based on the API response
-    error_log("Found existing subscriber ID: $subscriber_uid for $email");
+    df_wc_sendmailsio_debug_log("Found existing subscriber ID: $subscriber_uid for $email");
     
     // Compare existing data with new data to see if update is needed
     $update_data = array(
@@ -1504,18 +1504,18 @@ function df_wc_sendmailsio_update_existing_subscriber($subscriber_data, $api_end
             if ($existing_value !== $value && !($existing_value === null && empty($value))) {
                 $update_data[$key] = $value;
                 $has_changes = true;
-                error_log("Field $key changed from '$existing_value' to '$value'");
+                df_wc_sendmailsio_debug_log("Field $key changed from '$existing_value' to '$value'");
             }
         }
     }
     
     // If no changes needed, return 'already_exists'
     if (!$has_changes) {
-        error_log("No changes needed for $email - data is identical");
+        df_wc_sendmailsio_debug_log("No changes needed for $email - data is identical");
         return 'already_exists';
     }
     
-    error_log("Update data (changed fields only): " . print_r($update_data, true));
+    df_wc_sendmailsio_debug_log("Update data (changed fields only): " . print_r($update_data, true));
     
     // Update the subscriber
     $update_response = wp_remote_request($api_endpoint . '/subscribers/' . $subscriber_uid, array(
@@ -1527,19 +1527,19 @@ function df_wc_sendmailsio_update_existing_subscriber($subscriber_data, $api_end
     ));
     
     if (is_wp_error($update_response)) {
-        error_log('Error updating subscriber: ' . $update_response->get_error_message());
+        df_wc_sendmailsio_debug_log('Error updating subscriber: ' . $update_response->get_error_message());
         return 'Error updating subscriber';
     }
     
     $update_code = wp_remote_retrieve_response_code($update_response);
     $update_body = wp_remote_retrieve_body($update_response);
     
-    error_log("Update subscriber response (code $update_code): " . substr($update_body, 0, 200));
+    df_wc_sendmailsio_debug_log("Update subscriber response (code $update_code): " . substr($update_body, 0, 200));
     
     if ($update_code === 200) {
         return 'updated';
     } else {
-        error_log("Error updating subscriber $email (code $update_code): " . $update_body);
+        df_wc_sendmailsio_debug_log("Error updating subscriber $email (code $update_code): " . $update_body);
         return 'Error updating subscriber';
     }
 }
@@ -1593,7 +1593,7 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         ));
 
         if (is_wp_error($list_response)) {
-            error_log("List API error: " . $list_response->get_error_message());
+            df_wc_sendmailsio_debug_log("List API error: " . $list_response->get_error_message());
             $stats['details'][] = 'Failed to fetch list information from SendMails.io: ' . $list_response->get_error_message();
             return $stats;
         }
@@ -1639,12 +1639,12 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             'return' => 'ids'
         );
         
-        error_log("Searching for orders with WC status: " . implode(', ', $order_args['status']));
+        df_wc_sendmailsio_debug_log("Searching for orders with WC status: " . implode(', ', $order_args['status']));
         $order_ids = wc_get_orders($order_args);
-        error_log("Found " . count($order_ids) . " total orders with wc_get_orders");
+        df_wc_sendmailsio_debug_log("Found " . count($order_ids) . " total orders with wc_get_orders");
         
         // Simplified debug logging
-        error_log("Found " . count($order_ids) . " orders to process for product $product_id");
+        df_wc_sendmailsio_debug_log("Found " . count($order_ids) . " orders to process for product $product_id");
         
         $unique_customers = array();
         $orders_with_product = 0;
@@ -1679,8 +1679,8 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             }
         }
         
-        error_log("Found $orders_with_product orders with product $product_id");
-        error_log("Found " . count($unique_customers) . " unique customers");
+        df_wc_sendmailsio_debug_log("Found $orders_with_product orders with product $product_id");
+        df_wc_sendmailsio_debug_log("Found " . count($unique_customers) . " unique customers");
 
         $stats['total'] = count($unique_customers);
 
@@ -1693,17 +1693,17 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
 
         // Process all customers now that sync is working
         $stats['total'] = count($unique_customers);
-        error_log("Starting sync process for " . count($unique_customers) . " customers");
+        df_wc_sendmailsio_debug_log("Starting sync process for " . count($unique_customers) . " customers");
 
         // Set time limit to prevent timeouts
         set_time_limit(120);
         $sync_count = 0;
         foreach ($unique_customers as $customer_email) {
             $sync_count++;
-            error_log("Syncing customer $sync_count/" . count($unique_customers) . ": $customer_email");
+            df_wc_sendmailsio_debug_log("Syncing customer $sync_count/" . count($unique_customers) . ": $customer_email");
             
             // Find the most recent order for this customer with this product
-            error_log("Looking up orders for $customer_email");
+            df_wc_sendmailsio_debug_log("Looking up orders for $customer_email");
             $customer_orders = wc_get_orders(array(
                 'billing_email' => $customer_email,
                 'status' => array('completed', 'processing'),
@@ -1730,18 +1730,18 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             // Extract customer data using existing function
             $customer_data = df_wc_sendmailsio_extract_customer_data($target_order, $list_info);
             
-            error_log("Extracted customer data for $customer_email: " . print_r($customer_data, true));
+            df_wc_sendmailsio_debug_log("Extracted customer data for $customer_email: " . print_r($customer_data, true));
             
             if (empty($customer_data)) {
-                error_log("No customer data extracted for $customer_email - skipping");
+                df_wc_sendmailsio_debug_log("No customer data extracted for $customer_email - skipping");
                 $stats['skipped']++;
                 continue;
             }
 
             // Sync to SendMails.io using direct API call
-            error_log("About to sync customer data to SendMails.io");
+            df_wc_sendmailsio_debug_log("About to sync customer data to SendMails.io");
             $sync_result = df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid, $api_key, $api_endpoint);
-            error_log("Sync result for $customer_email: $sync_result");
+            df_wc_sendmailsio_debug_log("Sync result for $customer_email: $sync_result");
             
             if ($sync_result === true) {
                 $stats['created']++;
@@ -1759,7 +1759,7 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         
     } catch (Exception $e) {
         $stats['details'][] = 'Exception: ' . $e->getMessage();
-        error_log('Bulk sync error: ' . $e->getMessage());
+        df_wc_sendmailsio_debug_log('Bulk sync error: ' . $e->getMessage());
     }
 
     return $stats;
