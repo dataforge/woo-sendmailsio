@@ -1202,7 +1202,15 @@ function df_wc_sendmailsio_sync_customer_to_list($order, $list_uid, $product_id)
     $sync_result = false;
     if ($existing_subscriber) {
         // Update existing subscriber
-        $sync_result = df_wc_sendmailsio_update_subscriber($existing_subscriber['uid'], $customer_data, $list_uid, $api_endpoint, $api_key);
+        $subscriber_uid = isset($existing_subscriber['uid']) ? $existing_subscriber['uid'] : 
+                         (isset($existing_subscriber['subscriber_uid']) ? $existing_subscriber['subscriber_uid'] : null);
+        
+        if ($subscriber_uid) {
+            $sync_result = df_wc_sendmailsio_update_subscriber($subscriber_uid, $customer_data, $list_uid, $api_endpoint, $api_key);
+        } else {
+            df_wc_sendmailsio_debug_log('Woo SendmailsIO: No valid subscriber UID found in API response: ' . print_r($existing_subscriber, true));
+            $sync_result = false;
+        }
     } else {
         // Create new subscriber
         $sync_result = df_wc_sendmailsio_create_subscriber($customer_data, $list_uid, $api_endpoint, $api_key);
@@ -1380,6 +1388,10 @@ function df_wc_sendmailsio_create_subscriber($customer_data, $list_uid, $api_end
  * Update existing subscriber in SendMails.io
  */
 function df_wc_sendmailsio_update_subscriber($subscriber_uid, $customer_data, $list_uid, $api_endpoint, $api_key) {
+    if (empty($subscriber_uid)) {
+        df_wc_sendmailsio_debug_log('Woo SendmailsIO: Update subscriber failed - subscriber UID is empty');
+        return false;
+    }
     $url = trailingslashit($api_endpoint) . 'subscribers/' . urlencode($subscriber_uid);
     $url = add_query_arg('api_token', $api_key, $url);
     
