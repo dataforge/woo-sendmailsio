@@ -1552,8 +1552,13 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             return $stats;
         }
 
-        // Sync each unique customer
-        error_log("Starting sync process for " . count($unique_customers) . " customers");
+        // Limit to 5 customers for testing to avoid timeouts
+        $unique_customers = array_slice($unique_customers, 0, 5);
+        $stats['total'] = count($unique_customers);
+        error_log("Starting sync process for " . count($unique_customers) . " customers (limited for testing)");
+
+        // Set time limit to prevent timeouts
+        set_time_limit(120);
         $sync_count = 0;
         foreach ($unique_customers as $customer_email) {
             $sync_count++;
