@@ -1380,11 +1380,15 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         // Debug logging for API key
         error_log("Bulk sync API key debug: '" . $api_key . "' (length: " . strlen($api_key) . ")");
         error_log("API endpoint: " . $api_endpoint);
+        error_log("API key empty check: " . (empty($api_key) ? 'true' : 'false'));
+        error_log("API key trim length: " . strlen(trim($api_key)));
         
-        if (empty($api_key)) {
+        if (empty(trim($api_key))) {
             $stats['details'][] = 'SendMails.io API key not configured';
             return $stats;
         }
+        
+        error_log("API key check passed, proceeding with list fetch");
 
         // Get list fields from SendMails.io API to determine what fields exist
         error_log("Fetching list fields from: " . $api_endpoint . '/lists/' . $list_uid);
