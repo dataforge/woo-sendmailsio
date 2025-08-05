@@ -1591,13 +1591,18 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
             // Extract customer data using existing function
             $customer_data = df_wc_sendmailsio_extract_customer_data($target_order, $list_info);
             
+            error_log("Extracted customer data for $customer_email: " . print_r($customer_data, true));
+            
             if (empty($customer_data)) {
+                error_log("No customer data extracted for $customer_email - skipping");
                 $stats['skipped']++;
                 continue;
             }
 
             // Sync to SendMails.io using direct API call
+            error_log("About to sync customer data to SendMails.io");
             $sync_result = df_wc_sendmailsio_sync_customer_data_to_list($customer_data, $list_uid, $api_key, $api_endpoint);
+            error_log("Sync result for $customer_email: $sync_result");
             
             if ($sync_result === true) {
                 $stats['created']++;
