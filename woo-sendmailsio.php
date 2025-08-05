@@ -1546,6 +1546,7 @@ function df_wc_sendmailsio_handle_sync_past_customers() {
             )
         ));
     } else {
-        wp_send_json_error($result['message']);
+        $error_message = !empty($result['details']) ? implode(', ', $result['details']) : 'Sync failed';
+        wp_send_json_error($error_message);
     }
 }
