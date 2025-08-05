@@ -892,6 +892,22 @@ function df_wc_sendmailsio_product_mapping_page() {
     <?php
 }
 
+/**
+ * Helper function to check if debug logging is enabled
+ */
+function df_wc_sendmailsio_is_debug_enabled() {
+    return get_option('df_wc_sendmailsio_debug_logging', '0') === '1';
+}
+
+/**
+ * Debug logging wrapper - only logs if debug is enabled
+ */
+function df_wc_sendmailsio_debug_log($message) {
+    if (df_wc_sendmailsio_is_debug_enabled()) {
+        error_log($message);
+    }
+}
+
 // Settings form
 function df_wc_sendmailsio_settings_form() {
     $api_key_option = 'df_wc_sendmailsio_api_key';
@@ -905,6 +921,7 @@ function df_wc_sendmailsio_settings_form() {
         } else {
             $new_key = isset($_POST['df_wc_sendmailsio_api_key']) ? sanitize_text_field($_POST['df_wc_sendmailsio_api_key']) : '';
             $new_endpoint = isset($_POST['df_wc_sendmailsio_api_endpoint']) ? esc_url_raw(trim($_POST['df_wc_sendmailsio_api_endpoint'])) : '';
+            $debug_logging = isset($_POST['df_wc_sendmailsio_debug_logging']) ? '1' : '0';
             $updated = false;
             if ($new_key) {
                 update_option($api_key_option, $new_key);
@@ -914,6 +931,9 @@ function df_wc_sendmailsio_settings_form() {
                 update_option($endpoint_option, $new_endpoint);
                 $updated = true;
             }
+            // Always update debug logging setting
+            update_option('df_wc_sendmailsio_debug_logging', $debug_logging);
+            $updated = true;
             if ($updated) {
                 echo '<div class="notice notice-success"><p>Settings updated successfully.</p></div>';
             } else {
@@ -926,6 +946,7 @@ function df_wc_sendmailsio_settings_form() {
     $api_key = get_option($api_key_option, '');
     $masked_key = $api_key ? str_repeat('*', max(0, strlen($api_key) - 4)) . substr($api_key, -4) : '';
     $api_endpoint = get_option($endpoint_option, $default_endpoint);
+    $debug_logging = get_option('df_wc_sendmailsio_debug_logging', '0');
     ?>
     <form method="post" action="">
         <?php wp_nonce_field('df_wc_sendmailsio_save_api_key', 'df_wc_sendmailsio_nonce'); ?>
@@ -948,6 +969,16 @@ function df_wc_sendmailsio_settings_form() {
                 <td>
                     <input type="text" name="df_wc_sendmailsio_api_endpoint" value="<?php echo esc_attr($api_endpoint); ?>" style="width:300px;" autocomplete="off" />
                     <br><small>Default: <?php echo esc_html($default_endpoint); ?></small>
+                </td>
+            </tr>
+            <tr valign="top">
+                <th scope="row">Debug Logging</th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="df_wc_sendmailsio_debug_logging" value="1" <?php checked($debug_logging, '1'); ?> />
+                        Enable detailed debug logging
+                    </label>
+                    <br><small>When enabled, detailed sync information will be logged to help with troubleshooting. Disable to reduce log size.</small>
                 </td>
             </tr>
         </table>
@@ -1540,21 +1571,21 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         $api_endpoint = get_option('df_wc_sendmailsio_api_endpoint', 'https://app.sendmails.io/api/v1');
         
         // Debug logging for API key
-        error_log("Bulk sync API key debug: '" . $api_key . "' (length: " . strlen($api_key) . ")");
-        error_log("API endpoint: " . $api_endpoint);
-        error_log("API key empty check: " . (empty($api_key) ? 'true' : 'false'));
-        error_log("API key trim length: " . strlen(trim($api_key)));
+        df_wc_sendmailsio_debug_log("Bulk sync API key debug: '" . $api_key . "' (length: " . strlen($api_key) . ")");
+        df_wc_sendmailsio_debug_log("API endpoint: " . $api_endpoint);
+        df_wc_sendmailsio_debug_log("API key empty check: " . (empty($api_key) ? 'true' : 'false'));
+        df_wc_sendmailsio_debug_log("API key trim length: " . strlen(trim($api_key)));
         
         if (empty(trim($api_key))) {
             $stats['details'][] = 'SendMails.io API key not configured';
             return $stats;
         }
         
-        error_log("API key check passed, proceeding with list fetch");
+        df_wc_sendmailsio_debug_log("API key check passed, proceeding with list fetch");
 
         // Get list fields from SendMails.io API to determine what fields exist
         $list_api_url = $api_endpoint . '/lists/' . $list_uid . '?api_token=' . $api_key;
-        error_log("Fetching list fields from: " . $list_api_url);
+        df_wc_sendmailsio_debug_log("Fetching list fields from: " . $list_api_url);
         $list_response = wp_remote_get($list_api_url, array(
             'headers' => array(
                 'Accept' => 'application/json'
@@ -1569,12 +1600,12 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
 
         $response_code = wp_remote_retrieve_response_code($list_response);
         $response_body = wp_remote_retrieve_body($list_response);
-        error_log("List API response code: $response_code");
-        error_log("List API response body: " . substr($response_body, 0, 500));
+        df_wc_sendmailsio_debug_log("List API response code: $response_code");
+        df_wc_sendmailsio_debug_log("List API response body: " . substr($response_body, 0, 500));
 
         $list_data = json_decode($response_body, true);
-        error_log("List data structure check - has 'list': " . (isset($list_data['list']) ? 'yes' : 'no'));
-        error_log("List data structure check - has 'data': " . (isset($list_data['data']) ? 'yes' : 'no'));
+        df_wc_sendmailsio_debug_log("List data structure check - has 'list': " . (isset($list_data['list']) ? 'yes' : 'no'));
+        df_wc_sendmailsio_debug_log("List data structure check - has 'data': " . (isset($list_data['data']) ? 'yes' : 'no'));
         
         if (!$list_data) {
             $stats['details'][] = 'Failed to parse list data from SendMails.io';
@@ -1584,10 +1615,10 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         // Check if response has 'list' directly or nested under 'data'
         if (isset($list_data['list']['fields'])) {
             $list_info = array('list' => array('fields' => $list_data['list']['fields']));
-            error_log("Using direct list structure");
+            df_wc_sendmailsio_debug_log("Using direct list structure");
         } elseif (isset($list_data['data']['fields'])) {
             $list_info = array('list' => array('fields' => $list_data['data']['fields']));
-            error_log("Using data.fields structure");
+            df_wc_sendmailsio_debug_log("Using data.fields structure");
         } else {
             $stats['details'][] = 'Invalid list data structure from SendMails.io (response code: ' . $response_code . ')';
             return $stats;
