@@ -1411,12 +1411,25 @@ function df_wc_sendmailsio_bulk_sync_product_customers($product_id, $list_uid) {
         error_log("List API response body: " . substr($response_body, 0, 500));
 
         $list_data = json_decode($response_body, true);
-        if (!$list_data || !isset($list_data['data']['fields'])) {
-            $stats['details'][] = 'Invalid list data from SendMails.io (response code: ' . $response_code . ')';
+        error_log("List data structure check - has 'list': " . (isset($list_data['list']) ? 'yes' : 'no'));
+        error_log("List data structure check - has 'data': " . (isset($list_data['data']) ? 'yes' : 'no'));
+        
+        if (!$list_data) {
+            $stats['details'][] = 'Failed to parse list data from SendMails.io';
             return $stats;
         }
-
-        $list_info = array('list' => array('fields' => $list_data['data']['fields']));
+        
+        // Check if response has 'list' directly or nested under 'data'
+        if (isset($list_data['list']['fields'])) {
+            $list_info = array('list' => array('fields' => $list_data['list']['fields']));
+            error_log("Using direct list structure");
+        } elseif (isset($list_data['data']['fields'])) {
+            $list_info = array('list' => array('fields' => $list_data['data']['fields']));
+            error_log("Using data.fields structure");
+        } else {
+            $stats['details'][] = 'Invalid list data structure from SendMails.io (response code: ' . $response_code . ')';
+            return $stats;
+        }
 
         // Get all orders containing this product (including variations)
         $product = wc_get_product($product_id);
