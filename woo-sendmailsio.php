@@ -2,15 +2,20 @@
 /*
 Plugin Name: woo-sendmailsio
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.14
+Version: 0.15
 Author: dataforge
-GitHub Plugin URI: https://github.com/dataforge/woo-sendmailsio
-Update URI: https://video.dataforge.us/wp-json/git-updater/v1/update/?key=40d21d0bae413cf7b77b0219c19047c6
+Update URI: https://github.com/dataforge/woo-sendmailsio
 */
+
+define( 'WOO_SENDMAILSIO_VERSION', '0.15' );
+define( 'WOO_SENDMAILSIO_FILE', __FILE__ );
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
+
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-updater.php';
+Woo_Sendmailsio_Updater::init();
 
 add_action('admin_menu', 'df_wc_sendmailsio_add_admin_menu');
 function df_wc_sendmailsio_add_admin_menu() {
