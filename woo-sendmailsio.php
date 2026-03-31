@@ -2,12 +2,12 @@
 /*
 Plugin Name: woo-sendmailsio
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.16
+Version: 0.16.1
 Author: dataforge
 Update URI: https://github.com/dataforge/woo-sendmailsio
 */
 
-define( 'WOO_SENDMAILSIO_VERSION', '0.16' );
+define( 'WOO_SENDMAILSIO_VERSION', '0.16.1' );
 define( 'WOO_SENDMAILSIO_FILE', __FILE__ );
 
 if (!defined('ABSPATH')) {
@@ -41,9 +41,6 @@ function df_wc_sendmailsio_add_admin_menu() {
  * Handle adding a custom field to a list.
  */
 function df_wc_sendmailsio_settings_page() {
-    // Redirect to Product List Mapping by default
-    wp_safe_redirect(admin_url('admin.php?page=woo-sendmailsio-product-mapping'));
-    exit;
     ?>
     <div class="wrap">
         <h1>Woo SendmailsIO</h1>
