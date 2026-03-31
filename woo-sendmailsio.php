@@ -2,12 +2,12 @@
 /*
 Plugin Name: woo-sendmailsio
 Description: Integrates WooCommerce products with sendmails.io mailing lists.
-Version: 0.15
+Version: 0.16
 Author: dataforge
 Update URI: https://github.com/dataforge/woo-sendmailsio
 */
 
-define( 'WOO_SENDMAILSIO_VERSION', '0.15' );
+define( 'WOO_SENDMAILSIO_VERSION', '0.16' );
 define( 'WOO_SENDMAILSIO_FILE', __FILE__ );
 
 if (!defined('ABSPATH')) {
@@ -1006,6 +1006,23 @@ function df_wc_sendmailsio_settings_form() {
             <input type="submit" name="df_wc_sendmailsio_save" class="button button-primary" value="Save Settings" />
         </p>
     </form>
+    <div class="card" style="margin-top:2em;">
+        <h2>Plugin Updates</h2>
+        <p>Current version: <strong>v<?php echo esc_html( WOO_SENDMAILSIO_VERSION ); ?></strong>
+        <?php if ( isset( $_GET['update_check'] ) ) : ?>
+            <?php if ( Woo_Sendmailsio_Updater::is_update_available() ) : ?>
+                &mdash; <span style="color:#b32d2e;">Update available!</span> <a href="<?php echo esc_url( admin_url( 'update-core.php' ) ); ?>">Go to Updates</a>
+            <?php else : ?>
+                &mdash; <span style="color:#00a32a;">Up to date</span>
+            <?php endif; ?>
+        <?php endif; ?>
+        </p>
+        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;">
+            <input type="hidden" name="action" value="woo_sendmailsio_check_updates" />
+            <?php wp_nonce_field( 'woo_sendmailsio_check_updates' ); ?>
+            <button type="submit" class="button">Check for Updates</button>
+        </form>
+    </div>
     <?php
 }
 
